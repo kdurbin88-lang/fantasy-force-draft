@@ -45,7 +45,6 @@ import {
   extractEspnPickLines,
   extractRosterAbbrevs,
   extractEspnCatchup,
-  extractUniqueLastNames,
   type ImpactGrade,
 } from "@/lib/engine";
 import { resolveTeam, useDraft, withLiveRanks } from "@/lib/store";
@@ -936,13 +935,16 @@ export function DraftApp() {
         ocrSource(canvas),
       ]);
       if (watchModeRef.current !== "screen" && watchModeRef.current !== "auto") return;
-      const history = extractEspnCatchup(`${rightText}\n${fullText}`, PLAYERS_2026);
-      const rail = extractUniqueLastNames(rightText, PLAYERS_2026);
+      const history = extractEspnPickLines(`${rightText}\n${fullText}`, PLAYERS_2026);
+      const railLooksLikePicks = /\/\s*[A-Z]{2,3}\s+(QB|RB|WR|TE)/.test(rightText);
+      const rail = railLooksLikePicks ? extractEspnPickLines(rightText, PLAYERS_2026) : [];
       const merged = [...history];
       for (const p of rail) {
         if (!merged.some((x) => x.id === p.id)) merged.push(p);
       }
-      const rosterHits = extractRosterAbbrevs(leftText, PLAYERS_2026);
+      const rosterHits = /QB|RB|WR|TE|FLEX/.test(leftText)
+        ? extractRosterAbbrevs(leftText, PLAYERS_2026)
+        : [];
       const n = merged.length ? ingest(merged) : 0;
       if (rosterHits.length) {
         for (const p of rosterHits) {
