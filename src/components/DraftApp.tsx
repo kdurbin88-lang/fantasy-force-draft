@@ -1175,7 +1175,7 @@ export function DraftApp() {
   if (!configured) return <SetupBoot />;
 
   return (
-    <main className="min-h-dvh text-fg">
+    <main className="flex min-h-dvh flex-col text-fg">
       <div className="fd-bar" />
       {showSiren && (
         <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center">
@@ -1194,7 +1194,7 @@ export function DraftApp() {
         </div>
       )}
 
-      <div className="mx-auto max-w-7xl px-3 py-4 pb-24 sm:px-6">
+      <div className="mx-auto flex w-full max-w-[1600px] flex-1 flex-col px-3 py-3 sm:px-5 lg:px-6">
         <div
           className={cn(
             "mb-4 flex flex-wrap items-center justify-between gap-2 rounded-full px-3 py-2",
@@ -1330,7 +1330,7 @@ export function DraftApp() {
 
         <div className="mb-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto_auto]">
           <form
-            className="fd-glass flex flex-col gap-2 rounded-[28px] p-3"
+            className="fd-glass flex flex-col gap-2 rounded-[28px] p-3 lg:flex-row lg:items-center"
             onSubmit={(e) => {
               e.preventDefault();
               takeTyped(false);
@@ -1342,7 +1342,7 @@ export function DraftApp() {
               placeholder="Last name just went — Enter"
               className="h-12 flex-1 rounded-xl bg-transparent px-4 text-sm text-fg placeholder:text-subtle outline-none"
             />
-            <button type="submit" className="fd-btn h-14 w-full text-sm font-bold">
+            <button type="submit" className="fd-btn h-12 w-full text-sm font-bold lg:w-auto lg:px-6">
               <span className="inline-flex items-center gap-2">
                 <X className="size-4" />
                 MARK TAKEN
@@ -1351,7 +1351,7 @@ export function DraftApp() {
             <button
               type="button"
               onClick={() => takeTyped(true)}
-              className="go-btn h-14 w-full text-sm font-bold"
+              className="go-btn h-12 w-full text-sm font-bold lg:w-auto lg:px-6"
             >
               <span className="inline-flex items-center gap-2">
                 <Check className="size-4" />
@@ -1361,7 +1361,7 @@ export function DraftApp() {
             <button
               type="button"
               onClick={runUndo}
-              className="go-btn h-14 w-full text-sm font-bold"
+              className="go-btn h-12 w-full text-sm font-bold lg:w-auto lg:px-6"
             >
               <span className="inline-flex items-center gap-2">
                 <Undo2 className="size-4" />
@@ -1475,8 +1475,8 @@ export function DraftApp() {
           </div>
         )}
 
-        <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
-          <section className="space-y-5">
+        <div className="grid min-w-0 flex-1 gap-5 lg:grid-cols-[minmax(0,1.65fr)_minmax(300px,0.95fr)]">
+          <section className="flex min-h-0 flex-col gap-5">
             <div
               className={cn(
                 "fd-glass fd-hero relative z-10 overflow-hidden rounded-3xl p-6 sm:p-7",
@@ -1664,8 +1664,8 @@ export function DraftApp() {
               <p className="mb-3 text-xs font-semibold tracking-wide text-subtle">
                 {available.length} ON THE BOARD
               </p>
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                {filtered.slice(0, 40).map((p) => (
+              <div className="grid grid-cols-1 gap-2 md:grid-cols-2 2xl:grid-cols-3">
+                {filtered.slice(0, 60).map((p) => (
                   <div
                     key={p.id}
                     className="fd-pill flex cursor-pointer items-center justify-between gap-2 rounded-2xl px-3 py-3"
