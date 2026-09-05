@@ -12,7 +12,7 @@ export function SeatRing({ teams, slot, humanSlots, onCycle }: SeatRingProps) {
   const autoCount = Math.max(0, teams - 1 - liveCount);
   return (
     <div className="w-full min-w-0">
-      <div className="grid w-full grid-cols-4 gap-1.5 sm:grid-cols-6 sm:gap-2">
+      <div className="flex flex-wrap gap-1.5">
         {Array.from({ length: teams }, (_, i) => i + 1).map((n) => {
           const mine = n === slot;
           const live = humanSlots.includes(n);
@@ -23,24 +23,19 @@ export function SeatRing({ teams, slot, humanSlots, onCycle }: SeatRingProps) {
               data-qa={`seat-${n}`}
               onClick={() => onCycle(n)}
               className={cn(
-                "flex aspect-square w-full min-w-0 flex-col items-center justify-center rounded-full font-mono text-[10px] font-bold sm:text-xs",
+                "inline-flex h-9 min-w-9 items-center justify-center rounded-full px-2 font-mono text-xs font-bold",
                 mine && "fd-btn",
                 !mine && live && "fd-glass text-fg",
-                !mine && !live && "fd-glass text-muted",
+                !mine && !live && "fd-ghost text-muted",
               )}
             >
-              <span>{n}</span>
-              <span className="max-w-full truncate tracking-wide">
-                {mine ? "YOU" : live ? "LIVE" : "AUTO"}
-              </span>
+              {mine ? "YOU" : n}
             </button>
           );
         })}
-      </div>
-      <div className="mt-3 grid grid-cols-3 gap-2 font-mono text-[10px] font-bold tracking-widest">
-        <div className="fd-glass px-2 py-2 text-center">YOU {slot || "—"}</div>
-        <div className="fd-glass px-2 py-2 text-center">LIVE {liveCount}</div>
-        <div className="fd-glass px-2 py-2 text-center text-muted">AUTO {autoCount}</div>
+        <span className="ml-auto self-center font-mono text-[10px] font-bold tracking-widest text-subtle">
+          LIVE {liveCount} · AUTO {autoCount}
+        </span>
       </div>
     </div>
   );

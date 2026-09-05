@@ -1393,7 +1393,7 @@ export function DraftApp() {
         </div>
         <div className="mb-4 min-w-0 rounded-2xl fd-glass px-3 py-3">
           <div className="mb-2 font-mono text-[10px] font-bold tracking-widest text-subtle">
-            SEATS · TAP A SEAT THAT JUST AUTO-PICKED · {humanSlots.length} LIVE
+            TAP AUTO IF THEY FIRE INSTANTLY · {humanSlots.length} LIVE
           </div>
           <SeatRing teams={teams} slot={slot} humanSlots={humanSlots} onCycle={toggleHuman} />
         </div>
