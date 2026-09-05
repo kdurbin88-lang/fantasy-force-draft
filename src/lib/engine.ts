@@ -181,7 +181,7 @@ export function lineupDelta(team: Player[], player: Player): number {
   return lineupProj([...team, player]) - lineupProj(team);
 }
 
-export type ImpactGrade = "MUST" | "HIGH" | "SOLID" | "LOW" | "SKIP";
+export type ImpactGrade = "MUST" | "HIGH" | "SOLID" | "STEAL" | "LOW" | "SKIP";
 
 export type RosterImpact = {
   score: number;
@@ -189,105 +189,109 @@ export type RosterImpact = {
   label: string;
 };
 
-export function rosterImpact(player: Player, team: Player[]): RosterImpact {
-  const c = counts(team);
-  const flex = flexFilled(team);
-  const delta = lineupDelta(team, player);
+function weeklyLineupDelta(team: Player[], player: Player): number {
+  return lineupDelta(team, player) / 17;
+}
+
+function skillStarters(team: Player[]): Player[] {
+  return starterLineup(team).filter(
+    (p) => p.position === "RB" || p.position === "WR" || p.position === "TE" || p.position === "QB",
+  );
+}
+
+function lowestSkillPpg(team: Player[]): number {
+  const s = skillStarters(team);
+  if (!s.length) return 0;
+  return Math.min(...s.map((p) => p.ppg || p.proj / 17));
+}
+
+function starterNeed(pos: Position): number {
+  if (pos === "WR") return ROSTER.WR;
+  if (pos === "RB") return ROSTER.RB;
+  if (pos === "QB") return ROSTER.QB;
+  if (pos === "TE") return ROSTER.TE;
+  return 1;
+}
+
+function haveAt(pos: Position, team: Player[]): number {
+  return counts(team)[pos === "DST" ? "DST" : pos];
+}
+
+/** Context-aware weekly-lineup impact. Ignores BPA/ADP except the STEAL override. */
+export function rosterImpact(player: Player, team: Player[], overallPick = team.length + 1): RosterImpact {
   const pos = player.position;
-  const wrHeavy = c.WR >= 3 && c.RB < 2;
-  const rbHeavy = c.RB >= 2 && c.WR < 3;
-  const holeRb = c.RB === 0 && team.length >= 1;
-  const holeWr = c.WR === 0 && team.length >= 1;
+  const have = haveAt(pos, team);
+  const need = starterNeed(pos);
+  const flex = flexFilled(team);
+  const deltaW = weeklyLineupDelta(team, player);
+  const ppg = player.ppg || player.proj / 17;
+  const floor = lowestSkillPpg(team);
+  const lateEnough = team.length >= 3 || overallPick >= 24;
+  const hole = have < need;
+  const skill = pos === "RB" || pos === "WR" || pos === "TE";
+  const oversat = have >= need + (flex >= 1 ? 1 : 0) + 1;
+  const beatsFlex = skill && deltaW > 2;
+  const upgrade = skill && floor > 0 && ppg > floor + 2;
 
   let grade: ImpactGrade = "SOLID";
-  let label = "Fits the board";
-  let score = Math.round(Math.max(8, Math.min(99, delta * 4.2)));
+  let label = "High-value depth / Flex viable.";
+  let score = Math.round(Math.max(8, Math.min(99, deltaW * 18 + (hole ? 20 : 0))));
 
-  if (pos === "WR") {
-    if (c.WR === 0) {
-      grade = holeWr ? "MUST" : "HIGH";
-      label = "Locks WR1 — empty starter slot";
-      score = Math.max(score, 88);
-    } else if (c.WR === 1) {
-      grade = "HIGH";
-      label = "Fills WR2";
-      score = Math.max(score, 78);
-    } else if (c.WR === 2) {
-      grade = "HIGH";
-      label = "Fills WR3 in a 3-WR league";
-      score = Math.max(score, 74);
-    } else if (c.WR === 3 && flex < 1) {
-      grade = wrHeavy ? "LOW" : "SOLID";
-      label = wrHeavy
-        ? `You already have ${c.WR} WRs and only ${c.RB} RB — FLEX WR sits behind an RB hole`
-        : "Starts at FLEX";
-      score = wrHeavy ? Math.min(score, 38) : Math.max(score, 62);
-    } else {
-      grade = wrHeavy || c.WR >= 4 ? "SKIP" : "LOW";
-      label =
-        c.WR >= 4
-          ? `5th+ WR — your lineup barely moves (${c.WR} WRs already)`
-          : "Bench WR — starters are set";
-      score = Math.min(score, 28);
+  if (pos === "K" || pos === "DST") {
+    if (team.length >= 12 && have === 0) {
+      return { score: 52, grade: "SOLID", label: "High-value depth / Flex viable." };
     }
-  } else if (pos === "RB") {
-    if (c.RB === 0) {
-      grade = holeRb || wrHeavy ? "MUST" : "HIGH";
-      label = wrHeavy
-        ? `Fills the RB hole — you have ${c.WR} WRs and no second back`
-        : "Hero RB — you have none";
-      score = Math.max(score, wrHeavy ? 94 : 86);
-    } else if (c.RB === 1) {
-      grade = wrHeavy ? "MUST" : "HIGH";
-      label = "Locks RB2 — weekly lineup needs this more than another WR";
-      score = Math.max(score, 84);
-    } else if (flex < 1) {
-      grade = c.WR < 3 ? "LOW" : "SOLID";
-      label = c.WR < 3 ? "FLEX RB, but you still need WR" : "Starts at FLEX";
-      score = c.WR < 3 ? Math.min(score, 44) : Math.max(score, 58);
-    } else {
-      grade = "LOW";
-      label = "RB depth — starters are already locked";
-      score = Math.min(score, 32);
-    }
-  } else if (pos === "TE") {
-    if (c.TE === 0 && (player.rank <= 20 || player.proj >= 220)) {
-      grade = "HIGH";
-      label = "Elite TE — fills the TE slot";
-      score = Math.max(score, 72);
-    } else if (c.TE === 0) {
-      grade = team.length < 6 ? "LOW" : "SOLID";
-      label = "Fills TE, but not a difference-maker yet";
-      score = team.length < 6 ? Math.min(score, 36) : 55;
-    } else {
-      grade = "SKIP";
-      label = "You already have a TE";
-      score = 12;
-    }
-  } else if (pos === "QB") {
-    if (c.QB === 0 && team.length >= 7) {
-      grade = "HIGH";
-      label = "Time to lock QB";
-      score = Math.max(score, 70);
-    } else if (c.QB === 0) {
-      grade = "LOW";
-      label = "QB can wait — 4-pt passing, starters first";
-      score = Math.min(score, 34);
-    } else {
-      grade = "SKIP";
-      label = "QB2 — almost never starts";
-      score = 10;
-    }
-  } else {
-    grade = team.length >= 12 ? "SOLID" : "SKIP";
-    label = team.length >= 12 ? "Closes K/DST" : "Too early for K/DST";
-    score = team.length >= 12 ? 50 : 8;
+    return { score: 8, grade: "SKIP", label: "Roster is saturated at this position." };
   }
 
-  if (rbHeavy && pos === "RB" && c.RB >= 2) {
+  if (pos === "QB") {
+    if (have === 0 && team.length >= 7) {
+      grade = "HIGH";
+      label = "Locks an elite starter.";
+      score = 72;
+    } else if (have === 0) {
+      grade = "LOW";
+      label = "Bench depth / injury backup.";
+      score = 28;
+    } else {
+      grade = "SKIP";
+      label = "Roster is saturated at this position.";
+      score = 10;
+    }
+  } else if (hole && lateEnough) {
+    grade = "MUST";
+    label = `Fills the ${pos} hole.`;
+    score = Math.max(score, 90);
+  } else if (hole && !lateEnough) {
+    grade = have === 0 ? "HIGH" : "SOLID";
+    label = have === 0 ? "Locks an elite starter." : "High-value depth / Flex viable.";
+    score = have === 0 ? Math.max(score, 80) : 64;
+  } else if (beatsFlex || upgrade) {
+    grade = "HIGH";
+    label = "Locks an elite starter.";
+    score = Math.max(score, 78);
+  } else if (deltaW >= 0.4 && (flex < 1 || have === need)) {
+    grade = "SOLID";
+    label = "High-value depth / Flex viable.";
+    score = Math.max(score, 58);
+  } else if (oversat || deltaW < 0.15) {
+    grade = "SKIP";
+    label = "Roster is saturated at this position.";
+    score = Math.min(score, 22);
+  } else {
     grade = "LOW";
-    label = `You already have ${c.RB} RBs — WR still has more weekly impact`;
-    score = Math.min(score, 36);
+    label = "Bench depth / injury backup.";
+    score = Math.min(Math.max(score, 24), 40);
+  }
+
+  const steal =
+    (grade === "SOLID" || grade === "LOW") &&
+    player.adp > 0 &&
+    overallPick - player.adp >= 12;
+  if (steal) {
+    grade = "STEAL";
+    label = "Too much value to pass up.";
+    score = Math.max(score, 70);
   }
 
   return { score, grade, label };

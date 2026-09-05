@@ -229,6 +229,7 @@ function PlayerSheet({
   team,
   available,
   untilMine,
+  pickOverall,
   taken,
   onClose,
   onTake,
@@ -237,6 +238,7 @@ function PlayerSheet({
   team: Player[];
   available: Player[];
   untilMine: number;
+  pickOverall: number;
   taken: boolean;
   onClose: () => void;
   onTake: (mine: boolean) => void;
@@ -248,7 +250,7 @@ function PlayerSheet({
   const reasons = pickReasons(player, team, available, untilMine);
   const v = vorp(player, available);
   const n = vona(player, available);
-  const impact = rosterImpact(player, team);
+  const impact = rosterImpact(player, team, pickOverall);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -379,11 +381,14 @@ function ImpactBadge({ grade, compact }: { grade: ImpactGrade; compact?: boolean
       ? "border-danger/50 bg-danger/20 text-danger"
       : grade === "HIGH"
         ? "border-accent/50 bg-accent/15 text-accent-bright"
-        : grade === "SOLID"
-          ? "border-white/25 bg-white/10 text-fg"
-          : grade === "LOW"
-            ? "border-white/10 bg-white/5 text-subtle"
-            : "border-white/10 text-subtle/70";
+        : grade === "STEAL"
+          ? "border-accent-bright/70 bg-accent/25 text-fg"
+          : grade === "SOLID"
+            ? "border-white/25 bg-white/10 text-fg"
+            : grade === "LOW"
+              ? "border-white/10 bg-white/5 text-subtle"
+              : "border-white/10 text-subtle/70";
+  const text = compact ? (grade === "STEAL" ? "STEAL" : grade) : grade === "STEAL" ? "VALUE STEAL" : grade;
   return (
     <span
       className={cn(
@@ -392,7 +397,7 @@ function ImpactBadge({ grade, compact }: { grade: ImpactGrade; compact?: boolean
         cls,
       )}
     >
-      {grade}
+      {text}
     </span>
   );
 }
@@ -1260,7 +1265,7 @@ export function DraftApp() {
                       {rec.name}
                     </h2>
                     <PosChip pos={rec.position} />
-                    <ImpactBadge grade={rosterImpact(rec, myTeam).grade} />
+                    <ImpactBadge grade={rosterImpact(rec, myTeam, liveCount + 1).grade} />
                     {rec.isRookie && (
                       <span className="rounded-full border border-white/20 px-2 py-0.5 text-[10px] font-extrabold tracking-widest">
                         ROOKIE
@@ -1276,7 +1281,7 @@ export function DraftApp() {
                     {rec.team} · Bye {rec.bye} · ADP {rec.adp.toFixed(1)} · {rec.ppg.toFixed(1)} PPG
                   </p>
                   <p className="mt-1 text-sm font-semibold text-accent-bright">
-                    {rosterImpact(rec, myTeam).label}
+                    {rosterImpact(rec, myTeam, liveCount + 1).label}
                   </p>
                     <button
                       type="button"
@@ -1427,7 +1432,7 @@ export function DraftApp() {
                         <div className="flex items-center gap-2">
                           <PosChip pos={p.position} />
                           <span className="truncate text-sm font-bold">{p.name}</span>
-                          <ImpactBadge grade={rosterImpact(p, myTeam).grade} compact />
+                          <ImpactBadge grade={rosterImpact(p, myTeam, liveCount + 1).grade} compact />
                           {synergyTags(p, myTeam).map((t) => (
                             <span
                               key={t}
@@ -1448,7 +1453,7 @@ export function DraftApp() {
                                 : ""}
                           {p.isRookie ? " · R" : ""}
                           {" · "}
-                          {rosterImpact(p, myTeam).grade}
+                          {rosterImpact(p, myTeam, liveCount + 1).grade}
                         </div>
                       </div>
                     </div>
@@ -1713,6 +1718,7 @@ export function DraftApp() {
           team={myTeam}
           available={available}
           untilMine={untilMine}
+          pickOverall={liveCount + 1}
           taken={draftedSet.has(selected.id)}
           onClose={() => setSelected(null)}
           onTake={(mine) => {
