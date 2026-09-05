@@ -459,6 +459,45 @@ function TierTrack({ label, count, kind }: { label: string; count: number; kind:
   );
 }
 
+const STARTER_SLOTS: { key: string; pos: Position | "FLEX" }[] = [
+  { key: "QB", pos: "QB" },
+  { key: "RB1", pos: "RB" },
+  { key: "RB2", pos: "RB" },
+  { key: "WR1", pos: "WR" },
+  { key: "WR2", pos: "WR" },
+  { key: "WR3", pos: "WR" },
+  { key: "TE", pos: "TE" },
+  { key: "FLEX", pos: "FLEX" },
+  { key: "K", pos: "K" },
+  { key: "DST", pos: "DST" },
+];
+
+function assignSlots(team: Player[]) {
+  const used = new Set<string>();
+  const take = (pos: Position) => {
+    const hit = team.find((p) => p.position === pos && !used.has(p.id));
+    if (hit) used.add(hit.id);
+    return hit ?? null;
+  };
+  const map: Record<string, Player | null> = {
+    QB: take("QB"),
+    RB1: take("RB"),
+    RB2: take("RB"),
+    WR1: take("WR"),
+    WR2: take("WR"),
+    WR3: take("WR"),
+    TE: take("TE"),
+    K: take("K"),
+    DST: take("DST"),
+  };
+  const flex = team.find(
+    (p) => !used.has(p.id) && (p.position === "RB" || p.position === "WR" || p.position === "TE"),
+  );
+  if (flex) used.add(flex.id);
+  map.FLEX = flex ?? null;
+  return map;
+}
+
 function RecapSheet({
   team,
   available,
@@ -1693,7 +1732,7 @@ export function DraftApp() {
             </div>
           </section>
 
-          <aside className="space-y-4">
+          <aside className="flex flex-col gap-4">
             <div className="fd-glass rounded-3xl p-5">
               <div className="mb-2 flex items-center gap-2 font-display text-lg font-extrabold tracking-wide">
                 <Radar className="size-4 text-accent-bright" />
@@ -1860,34 +1899,46 @@ export function DraftApp() {
               )}
             </div>
 
-            <div className="fd-glass rounded-3xl p-5">
+            <div className="fd-glass flex-1 rounded-3xl p-5">
               <h3 className="font-display text-lg font-extrabold tracking-wide">
                 <span className="inline-flex items-center gap-2">
                   <Users className="size-4 text-accent-bright" />
-                  MY ROSTER · {myTeam.length}
+                  MY ROSTER · {myTeam.length}/10
                 </span>
               </h3>
-              {myTeam.length === 0 ? (
-                <p className="mt-2 text-sm text-subtle">No picks yet.</p>
-              ) : (
-                <ul className="mt-3 space-y-2">
-                  {myTeam.map((p) => (
+              <ul className="mt-3 space-y-1.5">
+                {STARTER_SLOTS.map((slotDef) => {
+                  const filled = assignSlots(myTeam)[slotDef.key];
+                  return (
                     <li
-                      key={p.id}
-                      className="fd-pill flex cursor-pointer items-center justify-between rounded-xl px-3 py-2 text-sm"
-                      onClick={() => setSelected(p)}
+                      key={slotDef.key}
+                      className={cn(
+                        "flex items-center justify-between gap-2 rounded-xl px-3 py-2 text-sm",
+                        filled
+                          ? "fd-pill cursor-pointer"
+                          : "border border-dashed border-white/15 bg-white/[0.03]",
+                      )}
+                      onClick={() => filled && setSelected(filled)}
                     >
-                      <span className="flex items-center gap-2 font-bold">
-                        <PosChip pos={p.position} />
-                        {p.name}
+                      <span className="flex min-w-0 items-center gap-2">
+                        <span className="w-9 shrink-0 font-mono text-[10px] font-bold tracking-widest text-subtle">
+                          {slotDef.key}
+                        </span>
+                        {filled ? (
+                          <span className="truncate font-bold">{filled.name}</span>
+                        ) : (
+                          <span className="text-subtle">Open</span>
+                        )}
                       </span>
-                      <span className="font-display text-sm font-extrabold text-white/40">
-                        #{p.rank}
-                      </span>
+                      {filled ? (
+                        <span className="font-display text-sm font-extrabold text-white/40">#{filled.rank}</span>
+                      ) : (
+                        <span className="text-[10px] text-white/20">—</span>
+                      )}
                     </li>
-                  ))}
-                </ul>
-              )}
+                  );
+                })}
+              </ul>
             </div>
 
             <div className="fd-glass rounded-3xl p-5">
@@ -1898,7 +1949,21 @@ export function DraftApp() {
                 </span>
               </h3>
               {draftedPlayers.length === 0 ? (
-                <p className="mt-2 text-sm text-subtle">Waiting on the board.</p>
+                <ul className="mt-3 space-y-1.5">
+                  {ranked.slice(0, 8).map((p) => (
+                    <li
+                      key={`watch-${p.id}`}
+                      className="flex cursor-pointer items-center justify-between gap-2 rounded-xl border border-white/5 px-3 py-1.5 text-sm"
+                      onClick={() => setSelected(p)}
+                    >
+                      <span className="truncate text-muted">
+                        {p.name}
+                        <span className="ml-1 text-subtle">· {p.position}</span>
+                      </span>
+                      <span className="font-mono text-[10px] text-subtle">ADP {p.adp.toFixed(0)}</span>
+                    </li>
+                  ))}
+                </ul>
               ) : (
                 <ul className="mt-3 max-h-56 space-y-1 overflow-y-auto text-sm">
                   {draftedPlayers.map((p) => (
