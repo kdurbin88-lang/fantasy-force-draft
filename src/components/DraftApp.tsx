@@ -263,11 +263,11 @@ function PlayerSheet({
     <div className="fixed inset-0 z-[80] flex items-end justify-center sm:items-center">
       <button
         type="button"
-        className="absolute inset-0 bg-black/70"
+        className="absolute inset-0 bg-black/80"
         aria-label="Close player"
         onClick={onClose}
       />
-      <div className="fd-hero relative z-10 max-h-[92dvh] w-full max-w-xl overflow-y-auto rounded-t-3xl p-5 sm:rounded-3xl sm:p-6">
+      <div className="fd-sheet relative z-10 max-h-[92dvh] w-full max-w-xl overflow-y-auto rounded-t-3xl p-5 sm:rounded-3xl sm:p-6">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
@@ -524,7 +524,7 @@ function RecapSheet({
   return (
     <div className="fixed inset-0 z-[80] flex items-end justify-center sm:items-center">
       <button type="button" className="absolute inset-0 bg-black/70" aria-label="Close recap" onClick={onClose} />
-      <div className="fd-hero relative z-10 max-h-[92dvh] w-full max-w-2xl overflow-y-auto rounded-t-3xl p-5 sm:rounded-3xl sm:p-6">
+      <div className="fd-sheet relative z-10 max-h-[92dvh] w-full max-w-2xl overflow-y-auto rounded-t-3xl p-5 sm:rounded-3xl sm:p-6">
         <div className="flex items-start justify-between gap-3">
           <div>
             <div className="font-mono text-[10px] font-bold tracking-[0.28em] text-accent-bright">

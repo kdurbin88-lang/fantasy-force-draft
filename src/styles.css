@@ -91,6 +91,18 @@
     backdrop-filter: blur(40px) saturate(1.9);
     -webkit-backdrop-filter: blur(40px) saturate(1.9);
   }
+  .fd-sheet {
+    isolation: isolate;
+    background:
+      linear-gradient(180deg, rgba(22, 42, 82, 0.97) 0%, rgba(8, 14, 32, 0.98) 100%);
+    border: 1px solid rgba(210, 232, 255, 0.38);
+    box-shadow:
+      inset 0 1.5px 0 rgba(255, 255, 255, 0.35),
+      0 28px 80px rgba(0, 0, 0, 0.72),
+      0 0 60px rgba(40, 120, 255, 0.16);
+    backdrop-filter: blur(28px) saturate(1.4);
+    -webkit-backdrop-filter: blur(28px) saturate(1.4);
+  }
   .fd-btn {
     background-image: linear-gradient(180deg, #d6f0ff 0%, #7ec8ff 28%, #2aa4ff 62%, #0a62d0 100%);
     color: #ffffff;
