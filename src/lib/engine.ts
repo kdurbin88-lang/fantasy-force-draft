@@ -495,6 +495,14 @@ function zeroRbHatch(player: Player, team: Player[]): number {
   return 0.88;
 }
 
+/** First 4 roster picks are WR. No committee RBs, QBs, or kickers. */
+function wrFirstFour(player: Player, team: Player[]): number {
+  if (team.length >= 4) return 1;
+  if (player.position === "WR") return 1.55;
+  if (player.position === "TE" && (player.espnRank ?? player.rank) <= 10) return 0.7;
+  return 0.05;
+}
+
 function heatMult(need: boolean, heat: number, onClock: boolean): number {
   if (heat < 0.34) return 1;
   if (onClock) return need ? 1 + heat * 0.4 : 0.88;
@@ -814,14 +822,17 @@ export function rankBoard(available: Player[], team: Player[], untilMine = 0, ct
       let score = ev.score * cliff;
       score *= valueClash(player, team, available);
       score *= zeroRbHatch(player, team);
+      score *= wrFirstFour(player, team);
       const pickNum = livePickCount(draftedIds, ctx.keeperSeats) + 1;
-      const reach = player.adp - pickNum;
+      const nextPick = pickNum + Math.max(untilMine - 1, 0);
+      const reach = player.adp - nextPick;
       const espn = player.espnRank ?? player.rank;
-      const round = Math.floor((pickNum - 1) / teams) + 1;
+      const round = Math.floor((nextPick - 1) / teams) + 1;
+      if (player.adp > nextPick + 16 && espn > nextPick + 16) score *= 0.06;
       if (round === 1 && espn > 24) score = -9999;
       else if (round === 2 && espn > 48) score = -9999;
-      else if (pickNum <= 12 && player.adp > 16) score *= 0.08;
-      else if (pickNum <= 24 && player.adp > 36) score *= 0.15;
+      else if (nextPick <= 12 && player.adp > 16) score *= 0.08;
+      else if (nextPick <= 24 && player.adp > 36) score *= 0.15;
       else if (reach > 18) score *= 0.25;
       else if (reach > 12) score *= 0.45;
       score *= heatMult(holeAt(player.position, team), h, onClock);
@@ -961,6 +972,7 @@ export function pickReasons(
   const c = counts(team);
   const ev = evaluate(player, team, available, untilMine);
   const reasons: string[] = [];
+  if (team.length < 4 && player.position === "WR") reasons.push("WR script — first 4 picks");
   if (ev.last >= 1.4) reasons.push("Last difference-maker at this position");
   if (player.position === "RB" && c.RB === 0 && team.length >= 3 && player.rec >= 55) {
     reasons.push("Pass-catching Zero-RB");

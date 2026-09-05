@@ -1480,7 +1480,9 @@ export function DraftApp() {
               </div>
               {untilMine > 1 && (
                 <p className="mt-1 text-[11px] font-bold tracking-wide text-accent-bright/80">
-                  Projected at pick {draftedIds.length + untilMine + 1} · elites above him go first
+                  {myTeam.length < 4
+                    ? "First 4 picks are WRs — take the best receiver when you're up"
+                    : `Projected at pick ${liveCount + untilMine} · elites above him go first`}
                 </p>
               )}
               {rec ? (

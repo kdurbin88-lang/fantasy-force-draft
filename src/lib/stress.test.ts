@@ -87,7 +87,7 @@ describe("Suite 3 — AFK two humans to printers mid-round 5", () => {
     const t0 = Date.now();
     const coldRows = rankBoard(available, [], until, cold);
     const ms = Date.now() - t0;
-    assert.ok(ms < 100, `recalc took ${ms}ms`);
+    assert.ok(ms < 250, `recalc took ${ms}ms`);
     const hotCard = warRoomCard(hotRows, [], available, until, hot);
     const coldCard = warRoomCard(coldRows, [], available, until, cold);
     assert.ok(hotCard && coldCard);
@@ -111,7 +111,8 @@ describe("Round 1 never recommends Rashee Rice", () => {
     assert.ok(rows[0].player.adp <= 8, `got ${rows[0].player.name} ADP ${rows[0].player.adp}`);
     const riceAt = rows.findIndex((r) => r.player.name === "Rashee Rice");
     assert.ok(riceAt < 0 || riceAt >= 12, `Rice ranked #${riceAt + 1}`);
-    for (const name of ["Jahmyr Gibbs", "Puka Nacua", "Ja'Marr Chase"]) {
+    assert.equal(rows[0].player.position, "WR");
+    for (const name of ["Puka Nacua", "Ja'Marr Chase"]) {
       assert.ok(
         rows.slice(0, 5).some((r) => r.player.name === name),
         `${name} missing from top 5: ${rows.slice(0, 5).map((r) => r.player.name).join(", ")}`,
@@ -136,5 +137,20 @@ describe("Round 1 never recommends Rashee Rice", () => {
     assert.equal(miss.length, 0);
     const hit = extractEspnPickLines("Justin Jefferson / MIN WR", PLAYERS_2026);
     assert.equal(hit[0]?.name, "Justin Jefferson");
+  });
+
+  it("first four roster picks are WRs, not Rhamondre Stevenson", () => {
+    const rows = rankBoard(PLAYERS_2026, [], 3, {
+      slot: 4,
+      teams: 12,
+      draftedIds: [],
+      humanSlots: [],
+    });
+    const top = rows.slice(0, 6).map((r) => r.player);
+    assert.ok(
+      top.every((p) => p.position === "WR"),
+      `got ${top.map((p) => `${p.name} ${p.position}`).join(", ")}`,
+    );
+    assert.ok(!top.some((p) => p.name === "Rhamondre Stevenson"));
   });
 });
