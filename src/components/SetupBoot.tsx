@@ -26,8 +26,8 @@ export function SetupBoot() {
   const printers = teams - 1 - humanSlots.length - (slot >= 1 ? 1 : 0);
 
   return (
-    <main className="flex min-h-dvh items-center justify-center px-4 py-10 text-fg">
-      <div className="w-full max-w-xl space-y-6">
+    <main className="relative z-20 flex min-h-dvh items-center justify-center px-4 py-16 text-fg">
+      <div className="relative z-20 w-full max-w-xl space-y-6">
         <p className="font-mono text-[11px] font-bold tracking-[0.35em] text-accent-bright">
           BOOT LOAD
         </p>
@@ -39,17 +39,21 @@ export function SetupBoot() {
           This screen stays until that button. Picks already on the board are kept.
         </p>
 
-        <div className="fd-glass flex items-center justify-between rounded-2xl px-4 py-3">
+        <div className="relative z-30 rounded-2xl border border-white/20 bg-[#0a1630] px-4 py-4">
           <span className="font-mono text-xs font-bold tracking-widest text-subtle">TEAMS</span>
-          <div className="flex gap-2">
+          <div className="mt-3 grid grid-cols-3 gap-3">
             {[10, 11, 12].map((n) => (
               <button
                 key={n}
                 type="button"
-                onClick={() => setTeams(n)}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setTeams(n);
+                }}
                 className={cn(
-                  "h-10 min-w-10 rounded-lg font-mono text-sm font-bold",
-                  teams === n ? "bg-accent text-black" : "border border-white/15",
+                  "relative z-30 h-14 rounded-xl font-mono text-lg font-extrabold",
+                  teams === n ? "bg-accent text-black" : "border border-white/25 bg-black/40 text-fg",
                 )}
               >
                 {n}
