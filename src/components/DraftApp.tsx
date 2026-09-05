@@ -42,7 +42,7 @@ import {
   extractEspnCatchup,
   type ImpactGrade,
 } from "@/lib/engine";
-import { resolveTeam, useDraft, withLiveRanks } from "@/lib/store";
+import { liveDraftStarted, resolveTeam, useDraft, withLiveRanks } from "@/lib/store";
 import { canvasHash, grabFrame, ocrSource, sliceCanvas } from "@/lib/ocr";
 import {
   ESPN_LEAGUE_ID,
