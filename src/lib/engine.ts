@@ -1066,6 +1066,51 @@ export function extractFromText(raw: string, players: Player[]): Player[] {
   });
 }
 
+export function extractEspnPickLines(raw: string, players: Player[]): Player[] {
+  const hits: Player[] = [];
+  const seen = new Set<string>();
+  const re =
+    /([A-Z][A-Za-z.''-]+(?:\s+[A-Z][A-Za-z.''-]+){1,3})\s*\/\s*[A-Z]{2,3}\s+(?:QB|RB|WR|TE|K|D\/?ST)/g;
+  const hay = raw.replace(/\s+/g, " ");
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(hay))) {
+    const name = m[1].replace(/\s+/g, " ").trim();
+    const hit =
+      players.find((p) => norm(p.name) === norm(name)) || extractFromText(name, players)[0];
+    if (hit && !seen.has(hit.id)) {
+      seen.add(hit.id);
+      hits.push(hit);
+    }
+  }
+  return hits;
+}
+
+function lastNameKey(name: string) {
+  return norm(
+    name
+      .replace(/\s+(iii|ii|jr\.?|sr\.?)$/i, "")
+      .trim()
+      .split(/\s+/)
+      .slice(-1)[0] ?? "",
+  );
+}
+
+export function extractRosterAbbrevs(raw: string, players: Player[]): Player[] {
+  const hits: Player[] = [];
+  const seen = new Set<string>();
+  const re = /\b[A-Z]\.\s*([A-Z][A-Za-z''-]{3,})(?:\s+(?:III|II|Jr\.?))?/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(raw))) {
+    const last = lastNameKey(m[1]);
+    const matches = players.filter((p) => lastNameKey(p.name) === last);
+    if (matches.length === 1 && !seen.has(matches[0].id)) {
+      seen.add(matches[0].id);
+      hits.push(matches[0]);
+    }
+  }
+  return hits;
+}
+
 export function snakeOwner(overall: number, slot: number, teams = TEAMS) {
   const round = Math.ceil(overall / teams);
   const pos = ((overall - 1) % teams) + 1;

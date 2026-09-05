@@ -42,10 +42,12 @@ import {
   snakeOwner,
   vorp,
   rosterImpact,
+  extractEspnPickLines,
+  extractRosterAbbrevs,
   type ImpactGrade,
 } from "@/lib/engine";
 import { resolveTeam, useDraft, withLiveRanks } from "@/lib/store";
-import { canvasHash, grabFrame, ocrSource } from "@/lib/ocr";
+import { canvasHash, grabFrame, ocrSource, sliceCanvas } from "@/lib/ocr";
 import {
   ESPN_DRAFT_URL,
   ESPN_LEAGUE_ID,
@@ -906,44 +908,45 @@ export function DraftApp() {
       return;
     }
     lastHash.current = hash;
-    setWatchNote("Watching ESPN · scanning new frame…");
+    setWatchNote("Watching ESPN · scanning pick history…");
     try {
-      const text = await ocrSource(canvas);
+      const right = sliceCanvas(canvas, 0.68, 1);
+      const left = sliceCanvas(canvas, 0, 0.26);
+      const [rightText, leftText, fullText] = await Promise.all([
+        ocrSource(right),
+        ocrSource(left),
+        ocrSource(canvas),
+      ]);
       if (watchModeRef.current !== "screen") return;
-      const hits = extractFromText(text, PLAYERS_2026);
-      const ids = new Set(hits.map((p) => p.id));
-      if (lastScreenIds.current.size === 0) {
-        lastScreenIds.current = ids;
-        setWatchNote(`Watching ESPN · locked ${ids.size} names — waiting for a pick`);
-        return;
+      const history = extractEspnPickLines(`${rightText}\n${fullText}`, PLAYERS_2026);
+      const rosterHits = extractRosterAbbrevs(leftText, PLAYERS_2026);
+      const n = history.length ? ingest(history) : 0;
+      if (rosterHits.length) {
+        for (const p of rosterHits) {
+          if (!useDraft.getState().myIds.includes(p.id)) {
+            if (useDraft.getState().draftedIds.includes(p.id)) {
+              /* already taken — promote to mine */
+              useDraft.setState((s) => ({
+                myIds: s.myIds.includes(p.id) ? s.myIds : [...s.myIds, p.id],
+              }));
+            } else {
+              mark(p, true);
+            }
+          }
+        }
       }
-      const gone = [...lastScreenIds.current].filter((id) => !ids.has(id));
-      const added = [...ids].filter((id) => !lastScreenIds.current.has(id));
-      lastScreenIds.current = ids;
-      let lock = gone.length >= 1 && gone.length <= 3 ? gone : [];
-      if (lock.length === 0 && added.length >= 1 && added.length <= 3 && ids.size <= 24) {
-        lock = added;
-      }
-      if (gone.length > 3 && added.length > 5) {
-        setWatchNote("Watching ESPN · skipped a noisy frame");
-        return;
-      }
-      if (lock.length === 0) {
-        setWatchNote("Watching ESPN · live");
-        return;
-      }
-      const players = lock
-        .map((id) => PLAYERS_2026.find((p) => p.id === id))
-        .filter((p): p is Player => Boolean(p));
-      const n = ingest(players);
-      if (n) {
+      lastScreenIds.current = new Set(history.map((p) => p.id));
+      if (n || rosterHits.length) {
         playCue("ingest");
-        setIngestMsg(`Auto-caught ${players.map((p) => p.name).join(", ")}`);
+        setBeat(Date.now());
+        setIngestMsg(
+          `Caught ${n} pick${n === 1 ? "" : "s"} from ESPN${rosterHits.length ? ` · ${rosterHits.length} on your roster` : ""}`,
+        );
       }
       setWatchNote(
-        n
-          ? `Watching ESPN · ${n} new pick${n === 1 ? "" : "s"}`
-          : "Watching ESPN · live",
+        history.length
+          ? `Watching ESPN · ${history.length} names on Pick History`
+          : "Watching ESPN · no pick-history names yet — keep the Picks rail visible",
       );
     } catch {
       setWatchNote("Watching ESPN · scan hiccup, retrying");
