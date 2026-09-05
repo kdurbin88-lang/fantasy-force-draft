@@ -462,13 +462,19 @@ function TierTrack({ label, count, kind }: { label: string; count: number; kind:
 function RecapSheet({
   team,
   available,
+  slot,
+  teams,
+  myIds,
   onClose,
 }: {
   team: Player[];
   available: Player[];
+  slot: number;
+  teams: number;
+  myIds: string[];
   onClose: () => void;
 }) {
-  const r = buildRecap(team, available);
+  const r = buildRecap(team, available, { slot, teams, myIds });
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -482,10 +488,12 @@ function RecapSheet({
       <div className="fd-hero relative z-10 max-h-[92dvh] w-full max-w-2xl overflow-y-auto rounded-t-3xl p-5 sm:rounded-3xl sm:p-6">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <div className="font-mono text-[10px] font-bold tracking-[0.28em] text-accent-bright">POST-DRAFT RECAP</div>
+            <div className="font-mono text-[10px] font-bold tracking-[0.28em] text-accent-bright">
+              DRAFT ANALYSIS REPORT
+            </div>
             <h2 className="title-glow mt-1 font-display text-4xl font-extrabold leading-none">{r.title}</h2>
             <p className="mt-2 text-sm text-muted">
-              Grade {r.grade} · PWR {String(r.power).padStart(2, "0")} · {r.weeklyPpg.toFixed(1)} PPG · {r.seasonPts} PPR
+              {r.archetype} · Rank {r.projectedRank} · Efficiency {r.efficiencyPct}%
             </p>
           </div>
           <button type="button" onClick={onClose} className="grid size-10 place-items-center rounded-full fd-ghost">
@@ -493,23 +501,71 @@ function RecapSheet({
           </button>
         </div>
 
-        <div className="mt-4 grid grid-cols-3 gap-2 font-mono text-[11px]">
+        <div className="mt-4 grid grid-cols-2 gap-2 font-mono text-[11px] sm:grid-cols-4">
           <div className="fd-glass px-3 py-3">
-            <div className="text-subtle">FLOOR</div>
-            <div className="text-xl font-bold">{r.floorPpg.toFixed(1)}</div>
+            <div className="text-subtle">ANTI-FRAGILITY</div>
+            <div className="text-xl font-bold">{r.antiFragility}</div>
           </div>
           <div className="fd-glass px-3 py-3">
-            <div className="text-subtle">CEIL</div>
-            <div className="text-xl font-bold">{r.ceilPpg.toFixed(1)}</div>
+            <div className="text-subtle">FLEX OPTIONS</div>
+            <div className="text-xl font-bold">{r.flexOptionality}</div>
           </div>
           <div className="fd-glass px-3 py-3">
-            <div className="text-subtle">W15–17</div>
-            <div className="text-xl font-bold">{r.playoffMult.toFixed(2)}x</div>
+            <div className="text-subtle">VARIANCE</div>
+            <div className="text-xl font-bold">{r.varianceCoef.toFixed(2)}</div>
+          </div>
+          <div className="fd-glass px-3 py-3">
+            <div className="text-subtle">VS LEAGUE</div>
+            <div className="text-xl font-bold">
+              {r.ppgVsLeague >= 0 ? "+" : ""}
+              {r.ppgVsLeague}
+            </div>
           </div>
         </div>
 
-        <p className="mt-4 text-sm font-semibold leading-relaxed">{r.verdict}</p>
-        <p className="mt-2 text-sm text-muted">{r.path}</p>
+        <div className="mt-4 fd-glass p-4">
+          <div className="font-mono text-[10px] font-bold tracking-widest text-accent-bright">EXECUTIVE SUMMARY</div>
+          <p className="mt-2 text-sm font-semibold leading-relaxed">{r.verdict}</p>
+          <p className="mt-2 text-sm text-muted">{r.path}</p>
+        </div>
+
+        <div className="mt-4 grid gap-3 font-mono text-[11px] sm:grid-cols-3">
+          <div className="fd-glass px-3 py-3">
+            <div className="text-subtle">CLEAR 115</div>
+            <div className="text-xl font-bold">{r.simClear115.toFixed(0)}%</div>
+          </div>
+          <div className="fd-glass px-3 py-3">
+            <div className="text-subtle">SIM MAX</div>
+            <div className="text-xl font-bold">{r.simMax.toFixed(1)}</div>
+          </div>
+          <div className="fd-glass px-3 py-3">
+            <div className="text-subtle">SIM FLOOR</div>
+            <div className="text-xl font-bold">{r.simMin.toFixed(1)}</div>
+          </div>
+        </div>
+
+        <div className="mt-4 fd-glass p-4">
+          <div className="font-mono text-[10px] font-bold tracking-widest text-accent-bright">CAPITAL ALLOCATION</div>
+          <p className="mt-2 text-sm">{r.capitalNote}</p>
+          <p className="mt-2 font-mono text-[11px] text-subtle">
+            WR leverage {r.leverageWrPct.toFixed(0)}% · RB leverage {r.leverageRbPct.toFixed(0)}%
+          </p>
+        </div>
+
+        <div className="mt-4 fd-glass p-4">
+          <div className="font-mono text-[10px] font-bold tracking-widest text-accent-bright">DRAFT EFFICIENCY</div>
+          <p className="mt-2 text-sm">{r.snipeNote}</p>
+          {r.highlights.length > 0 && (
+            <ul className="mt-2 space-y-1 text-xs text-muted">
+              {r.highlights.map((h) => (
+                <li key={`${h.player}-${h.round}`}>
+                  R{h.round} {h.player} · {h.adpDelta > 0 ? "+" : ""}
+                  {h.adpDelta} ADP · {h.impactNote}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
 
         <div className="mt-5 space-y-2">
           {r.rooms.map((room) => (
@@ -1880,7 +1936,14 @@ export function DraftApp() {
         />
       )}
       {showRecap && myTeam.length > 0 && (
-        <RecapSheet team={myTeam} available={available} onClose={() => setShowRecap(false)} />
+        <RecapSheet
+          team={myTeam}
+          available={available}
+          slot={slot}
+          teams={teams}
+          myIds={myIds}
+          onClose={() => setShowRecap(false)}
+        />
       )}
     </main>
   );
