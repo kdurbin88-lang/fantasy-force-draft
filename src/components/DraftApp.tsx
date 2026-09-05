@@ -52,6 +52,7 @@ import {
   ESPN_LEAGUE_URL,
   pollEspnDraft,
   fetchEspnRanks,
+  extractEspnLeagueId,
 } from "@/lib/espn";
 import { SetupBoot } from "@/components/SetupBoot";
 import { injuryFactor, sosPlayoff } from "@/lib/outlook";
@@ -801,6 +802,18 @@ export function DraftApp() {
       runUndo();
       return;
     }
+    const fromUrl = extractEspnLeagueId(takenQ);
+    if (fromUrl) {
+      setLeagueId(fromUrl);
+      setTakenQ("");
+      setWatchMode("espn");
+      setWatchNote(`Polling ESPN draft ${fromUrl}…`);
+      setIngestMsg("Practice drafts use a new league ID — syncing that room.");
+      window.setTimeout(() => {
+        void pullEspn();
+      }, 0);
+      return;
+    }
     const hit = quickMatch(takenQ, available);
     if (!hit) {
       setIngestMsg("No match — type more of the last name.");
@@ -996,7 +1009,7 @@ export function DraftApp() {
     try {
       const result = await pollEspnDraft({
         data: {
-          leagueId: leagueId || ESPN_LEAGUE_ID,
+          leagueId: useDraft.getState().leagueId || ESPN_LEAGUE_ID,
           swid: swid.trim() || undefined,
           espnS2: espnS2.trim() || undefined,
         },
@@ -1739,8 +1752,28 @@ export function DraftApp() {
                 LIVE BOARD
               </div>
               <p className="text-xs leading-relaxed text-muted">
-                Share the ESPN draft window once. Names lock themselves. Last-name
-                bar is the 2-second backup.
+                Practice drafts get a <span className="text-fg">new ESPN league ID</span>.
+                Copy the URL from the ESPN draft tab and paste it below, then hit SYNC.
+              </p>
+              <input
+                value={leagueId}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setLeagueId(extractEspnLeagueId(v) ?? v.replace(/\D/g, ""));
+                }}
+                onPaste={(e) => {
+                  const text = e.clipboardData.getData("text");
+                  const id = extractEspnLeagueId(text);
+                  if (id) {
+                    e.preventDefault();
+                    setLeagueId(id);
+                  }
+                }}
+                placeholder="Paste ESPN draft URL or leagueId"
+                className="mt-3 h-11 w-full rounded-xl border border-white/15 bg-black/25 px-3 text-sm outline-none"
+              />
+              <p className="mt-2 font-mono text-[10px] text-subtle">
+                Watching {leagueId || ESPN_LEAGUE_ID}
               </p>
               <p className="mt-2 text-[10px] tracking-wide text-white/40">
                 Broadcast bumpers — Kevin MacLeod / incompetech
