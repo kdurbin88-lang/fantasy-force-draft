@@ -35,7 +35,7 @@ export const useDraft = create<DraftState>()(
       draftedIds: [],
       myIds: [],
       lastIngest: "",
-      slot: 4,
+      slot: 0,
       teams: 12,
       configured: false,
       leagueId: "296381258",
@@ -70,18 +70,16 @@ export const useDraft = create<DraftState>()(
       cycleSeat: (n) => {
         const { slot, humanSlots, teams } = get();
         if (n < 1 || n > teams) return;
+        if (n === slot) {
+          set({ slot: 0 });
+          return;
+        }
         if (!slot || slot < 1) {
           set({ slot: n, humanSlots: humanSlots.filter((s) => s !== n) });
           return;
         }
-        if (n === slot) {
-          return;
-        }
         if (humanSlots.includes(n)) {
-          set({
-            slot: n,
-            humanSlots: humanSlots.filter((s) => s !== n),
-          });
+          set({ humanSlots: humanSlots.filter((s) => s !== n) });
           return;
         }
         set({ humanSlots: [...humanSlots, n].sort((a, b) => a - b) });
@@ -156,11 +154,11 @@ export const useDraft = create<DraftState>()(
     }),
     {
       name: "fantasy-force-draft",
-      version: 3,
+      version: 4,
       skipHydration: false,
       migrate: (persisted) => {
         const p = persisted as DraftState;
-        return { ...p, configured: false };
+        return { ...p, configured: false, slot: 0 };
       },
       partialize: (s) => ({
         draftedIds: s.draftedIds,

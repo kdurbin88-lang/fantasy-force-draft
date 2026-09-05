@@ -23,7 +23,9 @@ export function SetupBoot() {
       <div className="fd-glass w-full min-w-0 max-w-lg space-y-5 p-6 sm:p-8">
         <p className="font-mono text-[11px] font-bold tracking-[0.35em] text-accent-bright">BOOT LOAD</p>
         <h1 className="title-glow font-display text-4xl font-extrabold tracking-tight">Lock the room</h1>
-        <p className="text-sm text-muted">Pick league size, tap YOUR seat, then LOCK ROOM.</p>
+        <p className="text-sm text-muted">
+          Nothing is locked yet. Tap YOUR real seat (it turns blue). Tap it again to move. Then tap humans (red).
+        </p>
 
         <div className="fd-glass p-4">
           <p className="mb-3 font-mono text-[10px] font-bold tracking-widest text-subtle">TEAMS</p>
@@ -48,7 +50,9 @@ export function SetupBoot() {
         <div className="fd-glass min-w-0 p-4">
           <p className="mb-3 font-mono text-[10px] font-bold tracking-widest text-subtle">YOUR SEAT</p>
           <SeatRing teams={teams} slot={slot} humanSlots={humanSlots} onCycle={cycleSeat} />
-          <p className="mt-3 text-xs text-muted">Tap other seats to mark humans (red). Leave the rest CPU.</p>
+          <p className="mt-3 text-xs text-muted">
+            Blue = you. Red = live humans. Gray = ESPN auto. Tap your blue seat to unlock if it is the wrong number.
+          </p>
         </div>
 
         {book && (
