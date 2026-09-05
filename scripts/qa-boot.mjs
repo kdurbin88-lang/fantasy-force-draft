@@ -27,20 +27,11 @@ try {
 
   await page.setViewportSize({ width: 1400, height: 900 });
   const lock = page.locator('[data-qa="lock-room"]');
-  const twelve = page.locator('[data-qa="teams-12"]');
-  const ten = page.locator('[data-qa="teams-10"]');
-  await ten.click({ timeout: 5000 });
+  await page.locator('[data-qa="seat-6"]').click();
   await page.waitForTimeout(200);
-  const tenBg = await ten.evaluate((el) => el.className);
-  if (!/\bfd-btn\b/.test(tenBg)) fails.push(`10 click did not select, class=${tenBg}`);
-
-  await twelve.click();
-  await page.waitForTimeout(200);
-
-  await page.locator('[data-qa="seat-4"]').click();
-  await page.waitForTimeout(200);
-  const you = await page.locator('[data-qa="seat-4"]').innerText();
-  if (!you.includes("YOU")) fails.push(`seat 4 not YOU: ${you}`);
+  const you = await page.locator('[data-qa="seat-6"]').innerText();
+  if (!you.includes("YOU")) fails.push(`seat 6 not YOU: ${you}`);
+  if ((await lock.innerText()).includes("TAP YOUR PICK")) fails.push("lock still disabled after picking 6");
 
   await lock.click();
   await page.waitForTimeout(600);

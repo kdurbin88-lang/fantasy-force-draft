@@ -1,20 +1,17 @@
 import { playbookFor } from "@/lib/engine";
 import { useDraft } from "@/lib/store";
 import { cn } from "@/lib/utils";
-import { SeatRing } from "@/components/SeatRing";
 
 const BOOKS: Record<string, string> = {
-  wheel: "WHEEL · you pick on the turn",
-  mid: "MID · watch the seat next to you",
-  anchor: "ANCHOR · contingency first",
+  wheel: "You pick on the turn — pair up.",
+  mid: "Watch the seat next to you every round.",
+  anchor: "The wrap can double-tap. Have a backup.",
 };
 
 export function SetupBoot() {
   const teams = useDraft((s) => s.teams);
   const slot = useDraft((s) => s.slot);
-  const humanSlots = useDraft((s) => s.humanSlots);
-  const setTeams = useDraft((s) => s.setTeams);
-  const cycleSeat = useDraft((s) => s.cycleSeat);
+  const setSlot = useDraft((s) => s.setSlot);
   const lockRoom = useDraft((s) => s.lockRoom);
   const book = slot >= 1 ? playbookFor(slot, teams) : null;
 
@@ -22,42 +19,38 @@ export function SetupBoot() {
     <main className="relative z-[60] flex min-h-dvh items-center justify-center px-4 py-16 text-fg">
       <div className="fd-glass w-full min-w-0 max-w-lg space-y-5 p-6 sm:p-8">
         <p className="font-mono text-[11px] font-bold tracking-[0.35em] text-accent-bright">BOOT LOAD</p>
-        <h1 className="title-glow font-display text-4xl font-extrabold tracking-tight">Lock the room</h1>
+        <h1 className="title-glow font-display text-4xl font-extrabold tracking-tight">What’s your pick?</h1>
         <p className="text-sm text-muted">
-          Nothing is locked yet. Tap YOUR real seat (it turns blue). Tap it again to move. Then tap humans (red).
+          12-team league. Tap your draft slot. Everyone else starts live — if a seat auto-picks in a second, tap them later on the board.
         </p>
 
-        <div className="fd-glass p-4">
-          <p className="mb-3 font-mono text-[10px] font-bold tracking-widest text-subtle">TEAMS</p>
-          <div className="grid grid-cols-3 gap-3">
-            {[10, 11, 12].map((n) => (
-              <button
-                key={n}
-                type="button"
-                data-qa={`teams-${n}`}
-                onClick={() => setTeams(n)}
-                className={cn(
-                  "h-16 font-mono text-2xl font-extrabold",
-                  teams === n ? "fd-btn" : "fd-ghost",
-                )}
-              >
-                {n}
-              </button>
-            ))}
-          </div>
-        </div>
-
         <div className="fd-glass min-w-0 p-4">
-          <p className="mb-3 font-mono text-[10px] font-bold tracking-widest text-subtle">YOUR SEAT</p>
-          <SeatRing teams={teams} slot={slot} humanSlots={humanSlots} onCycle={cycleSeat} />
-          <p className="mt-3 text-xs text-muted">
-            Blue = you. Red = live humans. Gray = ESPN auto. Tap your blue seat to unlock if it is the wrong number.
-          </p>
+          <p className="mb-3 font-mono text-[10px] font-bold tracking-widest text-subtle">YOUR PICK</p>
+          <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
+            {Array.from({ length: teams }, (_, i) => i + 1).map((n) => {
+              const mine = n === slot;
+              return (
+                <button
+                  key={n}
+                  type="button"
+                  data-qa={`seat-${n}`}
+                  onClick={() => setSlot(n)}
+                  className={cn(
+                    "flex aspect-square w-full min-w-0 flex-col items-center justify-center rounded-full font-display text-2xl font-extrabold",
+                    mine ? "fd-btn" : "fd-glass text-fg",
+                  )}
+                >
+                  {n}
+                  {mine ? <span className="font-mono text-[9px] tracking-widest">YOU</span> : null}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {book && (
           <p className="fd-glass px-4 py-3 text-sm text-accent-bright">
-            {BOOKS[book]} · slot {slot} of {teams}
+            Slot {slot} · {BOOKS[book]}
           </p>
         )}
 
@@ -68,7 +61,7 @@ export function SetupBoot() {
           onClick={lockRoom}
           className="fd-btn h-16 w-full text-lg font-extrabold tracking-widest disabled:opacity-40"
         >
-          LOCK ROOM
+          {slot < 1 ? "TAP YOUR PICK FIRST" : `LOCK IN PICK ${slot}`}
         </button>
       </div>
     </main>

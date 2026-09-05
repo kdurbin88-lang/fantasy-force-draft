@@ -699,7 +699,7 @@ export function DraftApp() {
   const leagueId = useDraft((s) => s.leagueId);
   const setLeagueId = useDraft((s) => s.setLeagueId);
   const humanSlots = useDraft((s) => s.humanSlots);
-  const cycleSeat = useDraft((s) => s.cycleSeat);
+  const toggleHuman = useDraft((s) => s.toggleHuman);
   const queueIds = useDraft((s) => s.queueIds);
   const setQueue = useDraft((s) => s.setQueue);
   const undo = useDraft((s) => s.undo);
@@ -1395,9 +1395,9 @@ export function DraftApp() {
         </div>
         <div className="mb-4 min-w-0 rounded-2xl fd-glass px-3 py-3">
           <div className="mb-2 font-mono text-[10px] font-bold tracking-widest text-subtle">
-            SEATS · TAP HUMAN / PRINTER · {humanSlots.length} LIVE
+            SEATS · TAP A SEAT THAT JUST AUTO-PICKED · {humanSlots.length} LIVE
           </div>
-          <SeatRing teams={teams} slot={slot} humanSlots={humanSlots} onCycle={cycleSeat} />
+          <SeatRing teams={teams} slot={slot} humanSlots={humanSlots} onCycle={toggleHuman} />
         </div>
 
         <div

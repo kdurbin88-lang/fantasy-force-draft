@@ -86,7 +86,9 @@ export const useDraft = create<DraftState>()(
       },
       lockRoom: () => {
         const { slot, teams } = get();
-        if (slot >= 1 && slot <= teams) set({ configured: true });
+        if (slot < 1 || slot > teams) return;
+        const humanSlots = Array.from({ length: teams }, (_, i) => i + 1).filter((n) => n !== slot);
+        set({ configured: true, humanSlots });
       },
       unlockRoom: () => set({ configured: false }),
       setQueue: (queueIds) =>

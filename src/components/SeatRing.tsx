@@ -8,7 +8,8 @@ type SeatRingProps = {
 };
 
 export function SeatRing({ teams, slot, humanSlots, onCycle }: SeatRingProps) {
-  const printers = Math.max(0, teams - 1 - humanSlots.length - (slot >= 1 ? 1 : 0));
+  const liveCount = humanSlots.filter((n) => n !== slot).length;
+  const autoCount = Math.max(0, teams - 1 - liveCount);
   return (
     <div className="w-full min-w-0">
       <div className="grid w-full grid-cols-4 gap-1.5 sm:grid-cols-6 sm:gap-2">
@@ -24,13 +25,13 @@ export function SeatRing({ teams, slot, humanSlots, onCycle }: SeatRingProps) {
               className={cn(
                 "flex aspect-square w-full min-w-0 flex-col items-center justify-center rounded-full font-mono text-[10px] font-bold sm:text-xs",
                 mine && "fd-btn",
-                !mine && live && "fd-glass border-danger text-danger",
+                !mine && live && "fd-glass text-fg",
                 !mine && !live && "fd-glass text-muted",
               )}
             >
               <span>{n}</span>
               <span className="max-w-full truncate tracking-wide">
-                {mine ? "YOU" : live ? "H" : "CPU"}
+                {mine ? "YOU" : live ? "LIVE" : "AUTO"}
               </span>
             </button>
           );
@@ -38,8 +39,8 @@ export function SeatRing({ teams, slot, humanSlots, onCycle }: SeatRingProps) {
       </div>
       <div className="mt-3 grid grid-cols-3 gap-2 font-mono text-[10px] font-bold tracking-widest">
         <div className="fd-glass px-2 py-2 text-center">YOU {slot || "—"}</div>
-        <div className="fd-glass px-2 py-2 text-center text-danger">HUMAN {humanSlots.length}</div>
-        <div className="fd-glass px-2 py-2 text-center">CPU {printers}</div>
+        <div className="fd-glass px-2 py-2 text-center">LIVE {liveCount}</div>
+        <div className="fd-glass px-2 py-2 text-center text-muted">AUTO {autoCount}</div>
       </div>
     </div>
   );
