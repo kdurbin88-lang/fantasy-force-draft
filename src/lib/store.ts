@@ -2,6 +2,12 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { PLAYERS_2026, type Player } from "./players";
 
+/** Live draft: Sat Sep 5, 2026 8:00 PM CDT. Practice before this does not persist the board. */
+export const LIVE_DRAFT_AT = Date.parse("2026-09-05T20:00:00-05:00");
+export function liveDraftStarted(now = Date.now()) {
+  return now >= LIVE_DRAFT_AT;
+}
+
 interface DraftState {
   draftedIds: string[];
   myIds: string[];
@@ -88,7 +94,15 @@ export const useDraft = create<DraftState>()(
         const { slot, teams } = get();
         if (slot < 1 || slot > teams) return;
         const humanSlots = Array.from({ length: teams }, (_, i) => i + 1).filter((n) => n !== slot);
-        set({ configured: true, humanSlots });
+        const live = liveDraftStarted();
+        const keepPicks = live && get().draftedIds.length > 0;
+        set({
+          configured: true,
+          humanSlots,
+          ...(keepPicks
+            ? {}
+            : { draftedIds: [], myIds: [], queueIds: [], lastIngest: "", keeperSeats: {} }),
+        });
       },
       unlockRoom: () => set({ configured: false }),
       setQueue: (queueIds) =>
@@ -156,23 +170,44 @@ export const useDraft = create<DraftState>()(
     }),
     {
       name: "fantasy-force-draft",
-      version: 4,
+      version: 5,
       skipHydration: false,
       migrate: (persisted) => {
         const p = persisted as DraftState;
-        return { ...p, configured: false, slot: 0 };
+        if (!liveDraftStarted()) {
+          return {
+            ...p,
+            draftedIds: [],
+            myIds: [],
+            queueIds: [],
+            lastIngest: "",
+            keeperSeats: {},
+            configured: false,
+          };
+        }
+        return p;
       },
-      partialize: (s) => ({
-        draftedIds: s.draftedIds,
-        myIds: s.myIds,
-        lastIngest: s.lastIngest,
-        slot: s.slot,
-        teams: s.teams,
-        leagueId: s.leagueId,
-        humanSlots: s.humanSlots,
-        queueIds: s.queueIds,
-        keeperSeats: s.keeperSeats,
-      }),
+      onRehydrateStorage: () => (state) => {
+        if (state && !liveDraftStarted()) state.reset();
+      },
+      partialize: (s) => {
+        const room = {
+          slot: s.slot,
+          teams: s.teams,
+          leagueId: s.leagueId,
+          humanSlots: s.humanSlots,
+        };
+        if (!liveDraftStarted()) return room;
+        return {
+          ...room,
+          configured: s.configured,
+          draftedIds: s.draftedIds,
+          myIds: s.myIds,
+          lastIngest: s.lastIngest,
+          queueIds: s.queueIds,
+          keeperSeats: s.keeperSeats,
+        };
+      },
     },
   ),
 );
