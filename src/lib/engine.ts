@@ -181,6 +181,118 @@ export function lineupDelta(team: Player[], player: Player): number {
   return lineupProj([...team, player]) - lineupProj(team);
 }
 
+export type ImpactGrade = "MUST" | "HIGH" | "SOLID" | "LOW" | "SKIP";
+
+export type RosterImpact = {
+  score: number;
+  grade: ImpactGrade;
+  label: string;
+};
+
+export function rosterImpact(player: Player, team: Player[]): RosterImpact {
+  const c = counts(team);
+  const flex = flexFilled(team);
+  const delta = lineupDelta(team, player);
+  const pos = player.position;
+  const wrHeavy = c.WR >= 3 && c.RB < 2;
+  const rbHeavy = c.RB >= 2 && c.WR < 3;
+  const holeRb = c.RB === 0 && team.length >= 1;
+  const holeWr = c.WR === 0 && team.length >= 1;
+
+  let grade: ImpactGrade = "SOLID";
+  let label = "Fits the board";
+  let score = Math.round(Math.max(8, Math.min(99, delta * 4.2)));
+
+  if (pos === "WR") {
+    if (c.WR === 0) {
+      grade = holeWr ? "MUST" : "HIGH";
+      label = "Locks WR1 — empty starter slot";
+      score = Math.max(score, 88);
+    } else if (c.WR === 1) {
+      grade = "HIGH";
+      label = "Fills WR2";
+      score = Math.max(score, 78);
+    } else if (c.WR === 2) {
+      grade = "HIGH";
+      label = "Fills WR3 in a 3-WR league";
+      score = Math.max(score, 74);
+    } else if (c.WR === 3 && flex < 1) {
+      grade = wrHeavy ? "LOW" : "SOLID";
+      label = wrHeavy
+        ? `You already have ${c.WR} WRs and only ${c.RB} RB — FLEX WR sits behind an RB hole`
+        : "Starts at FLEX";
+      score = wrHeavy ? Math.min(score, 38) : Math.max(score, 62);
+    } else {
+      grade = wrHeavy || c.WR >= 4 ? "SKIP" : "LOW";
+      label =
+        c.WR >= 4
+          ? `5th+ WR — your lineup barely moves (${c.WR} WRs already)`
+          : "Bench WR — starters are set";
+      score = Math.min(score, 28);
+    }
+  } else if (pos === "RB") {
+    if (c.RB === 0) {
+      grade = holeRb || wrHeavy ? "MUST" : "HIGH";
+      label = wrHeavy
+        ? `Fills the RB hole — you have ${c.WR} WRs and no second back`
+        : "Hero RB — you have none";
+      score = Math.max(score, wrHeavy ? 94 : 86);
+    } else if (c.RB === 1) {
+      grade = wrHeavy ? "MUST" : "HIGH";
+      label = "Locks RB2 — weekly lineup needs this more than another WR";
+      score = Math.max(score, 84);
+    } else if (flex < 1) {
+      grade = c.WR < 3 ? "LOW" : "SOLID";
+      label = c.WR < 3 ? "FLEX RB, but you still need WR" : "Starts at FLEX";
+      score = c.WR < 3 ? Math.min(score, 44) : Math.max(score, 58);
+    } else {
+      grade = "LOW";
+      label = "RB depth — starters are already locked";
+      score = Math.min(score, 32);
+    }
+  } else if (pos === "TE") {
+    if (c.TE === 0 && (player.rank <= 20 || player.proj >= 220)) {
+      grade = "HIGH";
+      label = "Elite TE — fills the TE slot";
+      score = Math.max(score, 72);
+    } else if (c.TE === 0) {
+      grade = team.length < 6 ? "LOW" : "SOLID";
+      label = "Fills TE, but not a difference-maker yet";
+      score = team.length < 6 ? Math.min(score, 36) : 55;
+    } else {
+      grade = "SKIP";
+      label = "You already have a TE";
+      score = 12;
+    }
+  } else if (pos === "QB") {
+    if (c.QB === 0 && team.length >= 7) {
+      grade = "HIGH";
+      label = "Time to lock QB";
+      score = Math.max(score, 70);
+    } else if (c.QB === 0) {
+      grade = "LOW";
+      label = "QB can wait — 4-pt passing, starters first";
+      score = Math.min(score, 34);
+    } else {
+      grade = "SKIP";
+      label = "QB2 — almost never starts";
+      score = 10;
+    }
+  } else {
+    grade = team.length >= 12 ? "SOLID" : "SKIP";
+    label = team.length >= 12 ? "Closes K/DST" : "Too early for K/DST";
+    score = team.length >= 12 ? 50 : 8;
+  }
+
+  if (rbHeavy && pos === "RB" && c.RB >= 2) {
+    grade = "LOW";
+    label = `You already have ${c.RB} RBs — WR still has more weekly impact`;
+    score = Math.min(score, 36);
+  }
+
+  return { score, grade, label };
+}
+
 function urgency(pos: Position, team: Player[]): number {
   const c = counts(team);
   const n = team.length;

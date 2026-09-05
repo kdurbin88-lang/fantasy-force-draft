@@ -41,6 +41,8 @@ import {
   rankBoard,
   snakeOwner,
   vorp,
+  rosterImpact,
+  type ImpactGrade,
 } from "@/lib/engine";
 import { resolveTeam, useDraft, withLiveRanks } from "@/lib/store";
 import { canvasHash, grabFrame, ocrSource } from "@/lib/ocr";
@@ -246,6 +248,7 @@ function PlayerSheet({
   const reasons = pickReasons(player, team, available, untilMine);
   const v = vorp(player, available);
   const n = vona(player, available);
+  const impact = rosterImpact(player, team);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -279,6 +282,7 @@ function PlayerSheet({
                   {t}
                 </span>
               ))}
+              <ImpactBadge grade={impact.grade} />
             </div>
             <h2 className="mt-2 font-display text-4xl font-extrabold leading-none tracking-tight">
               {player.name}
@@ -294,6 +298,17 @@ function PlayerSheet({
           >
             <X className="size-4" />
           </button>
+        </div>
+
+        <div className="mt-4 rounded-2xl border border-accent/25 bg-accent/10 px-4 py-3">
+          <div className="flex items-center justify-between gap-2">
+            <div className="font-mono text-[10px] font-bold tracking-widest text-accent-bright">
+              IMPACT ON YOUR ROSTER
+            </div>
+            <ImpactBadge grade={impact.grade} />
+          </div>
+          <p className="mt-1 text-sm font-semibold">{impact.label}</p>
+          <p className="mt-1 font-mono text-[11px] text-subtle">{impact.score}/100 lineup fit</p>
         </div>
 
         <div className="mt-4 grid grid-cols-3 gap-2 font-mono text-[11px]">
@@ -355,6 +370,30 @@ function PlayerSheet({
         )}
       </div>
     </div>
+  );
+}
+
+function ImpactBadge({ grade, compact }: { grade: ImpactGrade; compact?: boolean }) {
+  const cls =
+    grade === "MUST"
+      ? "border-danger/50 bg-danger/20 text-danger"
+      : grade === "HIGH"
+        ? "border-accent/50 bg-accent/15 text-accent-bright"
+        : grade === "SOLID"
+          ? "border-white/25 bg-white/10 text-fg"
+          : grade === "LOW"
+            ? "border-white/10 bg-white/5 text-subtle"
+            : "border-white/10 text-subtle/70";
+  return (
+    <span
+      className={cn(
+        "rounded-md border font-mono font-bold tracking-widest",
+        compact ? "px-1 py-0 text-[9px]" : "px-2 py-0.5 text-[10px]",
+        cls,
+      )}
+    >
+      {grade}
+    </span>
   );
 }
 
@@ -1221,6 +1260,7 @@ export function DraftApp() {
                       {rec.name}
                     </h2>
                     <PosChip pos={rec.position} />
+                    <ImpactBadge grade={rosterImpact(rec, myTeam).grade} />
                     {rec.isRookie && (
                       <span className="rounded-full border border-white/20 px-2 py-0.5 text-[10px] font-extrabold tracking-widest">
                         ROOKIE
@@ -1234,6 +1274,9 @@ export function DraftApp() {
                   </div>
                   <p className="mt-3 text-sm font-medium text-muted">
                     {rec.team} · Bye {rec.bye} · ADP {rec.adp.toFixed(1)} · {rec.ppg.toFixed(1)} PPG
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-accent-bright">
+                    {rosterImpact(rec, myTeam).label}
                   </p>
                     <button
                       type="button"
@@ -1384,6 +1427,7 @@ export function DraftApp() {
                         <div className="flex items-center gap-2">
                           <PosChip pos={p.position} />
                           <span className="truncate text-sm font-bold">{p.name}</span>
+                          <ImpactBadge grade={rosterImpact(p, myTeam).grade} compact />
                           {synergyTags(p, myTeam).map((t) => (
                             <span
                               key={t}
@@ -1403,6 +1447,8 @@ export function DraftApp() {
                                 ? ` · ${p.rec.toFixed(0)} rec · ${p.recYds.toFixed(0)} yds`
                                 : ""}
                           {p.isRookie ? " · R" : ""}
+                          {" · "}
+                          {rosterImpact(p, myTeam).grade}
                         </div>
                       </div>
                     </div>
