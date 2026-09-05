@@ -6,8 +6,6 @@ import {
   RotateCcw,
   Check,
   X,
-  Square,
-  Link2,
   Zap,
   Footprints,
   Shield,
@@ -47,9 +45,7 @@ import {
 import { resolveTeam, useDraft, withLiveRanks } from "@/lib/store";
 import { canvasHash, grabFrame, ocrSource, sliceCanvas } from "@/lib/ocr";
 import {
-  ESPN_DRAFT_URL,
   ESPN_LEAGUE_ID,
-  ESPN_LEAGUE_URL,
   pollEspnDraft,
   fetchEspnRanks,
   extractEspnLeagueId,
@@ -1254,57 +1250,6 @@ export function DraftApp() {
       )}
 
       <div className="mx-auto flex w-full max-w-[1600px] flex-1 flex-col px-3 py-3 sm:px-5 lg:px-6">
-        <div
-          className={cn(
-            "mb-4 flex flex-wrap items-center justify-between gap-2 rounded-full px-3 py-2",
-            beat && now - beat > 8000 ? "border border-red-500/50 bg-red-950/40" : "fd-glass",
-          )}
-        >
-          <div className="flex min-w-0 items-center gap-2 text-xs font-semibold">
-            <span
-              className={cn(
-                "size-2.5 shrink-0 rounded-full",
-                !beat
-                  ? "bg-muted"
-                  : now - beat > 8000
-                    ? "bg-red-500"
-                    : "animate-pulse bg-accent shadow-[0_0_12px_#2ba4ff]",
-              )}
-            />
-            <span className="truncate">
-              {beat
-                ? `Last ESPN sync: ${Math.max(0, Math.floor((now - beat) / 1000))}s ago`
-                : "No ESPN heartbeat yet"}
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={() => {
-              setWatchMode("espn");
-              void pullEspn();
-            }}
-            className="h-9 shrink-0 rounded-full fd-ghost px-4 font-mono text-[11px] font-bold"
-          >
-            REFETCH
-          </button>
-        </div>
-        {watchMode !== "off" && (
-          <div className="fd-glass mb-5 flex items-center justify-between gap-3 rounded-2xl px-4 py-3">
-            <div className="flex items-center gap-3 text-sm font-semibold">
-              <span className="size-2.5 animate-pulse rounded-full bg-accent shadow-[0_0_12px_#2ba4ff]" />
-              {watchNote || "Live"}
-            </div>
-            <button
-              type="button"
-              onClick={stopWatch}
-              className="inline-flex h-9 items-center gap-1 rounded-full border border-white/20 px-3 text-xs font-bold"
-            >
-              <Square className="size-3" />
-              Stop
-            </button>
-          </div>
-        )}
-
         <header className="mb-6 flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-start gap-4">
             <FootballMark />
@@ -1319,24 +1264,6 @@ export function DraftApp() {
                 Best player left. On the clock. No second-guessing.
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
-                <a
-                  href={ESPN_LEAGUE_URL}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="fd-ghost inline-flex h-10 items-center gap-1.5 px-4 font-mono text-[11px] font-bold"
-                >
-                  <Link2 className="size-3.5" />
-                  League office
-                </a>
-                <a
-                  href={ESPN_DRAFT_URL}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="fd-ghost inline-flex h-10 items-center gap-1.5 px-4 font-mono text-[11px] font-bold"
-                >
-                  <Trophy className="size-3.5" />
-                  Draft room
-                </a>
                 <button
                   type="button"
                   onClick={() => {
@@ -1849,6 +1776,7 @@ export function DraftApp() {
                   {watchMode === "off" || watchMode === "sim" ? "LOCK ESPN" : "DISARM"}
                 </button>
               </div>
+              {watchNote ? <p className="mt-2 text-xs font-semibold text-muted">{watchNote}</p> : null}
               {showUnlock && (
                 <div className="mt-3 space-y-2 rounded-2xl border border-white/10 bg-black/20 p-3">
                   <p className="text-xs">
