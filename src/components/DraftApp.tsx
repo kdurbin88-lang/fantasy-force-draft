@@ -776,17 +776,22 @@ export function DraftApp() {
   const ranked = useMemo(() => rankedRows.map((row) => row.player), [rankedRows]);
 
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return ranked.filter((p) => {
+    const q = query.trim().toLowerCase().replace(/['’.`]/g, "");
+    const pool = q ? available : ranked;
+    const needle = (s: string) => s.toLowerCase().replace(/['’.`]/g, "");
+    return pool.filter((p) => {
       if (posFilter !== "ALL" && p.position !== posFilter) return false;
       if (!q) return true;
+      const name = needle(p.name);
+      const last = name.split(/\s+/).slice(-1)[0] ?? "";
       return (
-        p.name.toLowerCase().includes(q) ||
-        p.team.toLowerCase().includes(q) ||
+        name.includes(q) ||
+        last.startsWith(q) ||
+        needle(p.team).includes(q) ||
         p.position.toLowerCase() === q
       );
     });
-  }, [ranked, query, posFilter]);
+  }, [ranked, available, query, posFilter]);
 
   function take(player: Player, mine: boolean) {
     mark(player, mine);
@@ -1655,10 +1660,14 @@ export function DraftApp() {
                 <div className="relative flex-1">
                   <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-subtle" />
                   <input
+                    type="search"
+                    autoComplete="off"
+                    autoCorrect="off"
+                    spellCheck={false}
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Find a player"
-                    className="fd-glass h-12 w-full rounded-2xl pl-11 pr-4 text-sm text-fg placeholder:text-subtle outline-none"
+                    placeholder="Find a player — name or last name"
+                    className="fd-glass relative z-20 h-12 w-full rounded-2xl pl-11 pr-4 text-sm text-fg placeholder:text-subtle outline-none"
                   />
                 </div>
                 <div className="flex flex-wrap gap-1.5">
@@ -1678,10 +1687,12 @@ export function DraftApp() {
                 </div>
               </div>
               <p className="mb-3 text-xs font-semibold tracking-wide text-subtle">
-                {available.length} ON THE BOARD
+                {query.trim()
+                  ? `${filtered.length} MATCH${filtered.length === 1 ? "" : "ES"}`
+                  : `${available.length} ON THE BOARD`}
               </p>
               <div className="grid grid-cols-1 gap-2 md:grid-cols-2 2xl:grid-cols-3">
-                {filtered.slice(0, 60).map((p) => (
+                {filtered.slice(0, query.trim() ? 80 : 60).map((p) => (
                   <div
                     key={p.id}
                     className="fd-pill flex cursor-pointer items-center justify-between gap-2 rounded-2xl px-3 py-3"
