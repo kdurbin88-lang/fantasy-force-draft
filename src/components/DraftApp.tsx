@@ -51,6 +51,7 @@ import {
   extractEspnLeagueId,
 } from "@/lib/espn";
 import { SetupBoot } from "@/components/SetupBoot";
+import { SeatRing } from "@/components/SeatRing";
 import { injuryFactor, sosPlayoff } from "@/lib/outlook";
 import { synergyTags, vona, handcuffFor } from "@/lib/synergy";
 import { parseDump, warRoomCard, matchInOrder } from "@/lib/warRoom";
@@ -1392,31 +1393,11 @@ export function DraftApp() {
             ROOM
           </button>
         </div>
-        <div className="mb-4 fd-glass rounded-2xl px-3 py-3">
+        <div className="mb-4 min-w-0 rounded-2xl fd-glass px-3 py-3">
           <div className="mb-2 font-mono text-[10px] font-bold tracking-widest text-subtle">
             SEATS · TAP HUMAN / PRINTER · {humanSlots.length} LIVE
           </div>
-          <div className="flex flex-wrap gap-1.5">
-            {Array.from({ length: teams }, (_, i) => i + 1).map((n) => {
-              const mine = n === slot;
-              const live = humanSlots.includes(n);
-              return (
-                <button
-                  key={n}
-                  type="button"
-                  onClick={() => cycleSeat(n)}
-                  className={cn(
-                    "h-9 min-w-9 rounded-lg px-2 font-mono text-xs font-bold",
-                    mine && "bg-accent text-black",
-                    !mine && live && "border border-red-500/80 bg-red-950 text-red-100",
-                    !mine && !live && "border border-white/15 text-muted",
-                  )}
-                >
-                  {mine ? "YOU" : live ? `H${n}` : n}
-                </button>
-              );
-            })}
-          </div>
+          <SeatRing teams={teams} slot={slot} humanSlots={humanSlots} onCycle={cycleSeat} />
         </div>
 
         <div

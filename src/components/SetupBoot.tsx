@@ -1,6 +1,7 @@
 import { playbookFor } from "@/lib/engine";
 import { useDraft } from "@/lib/store";
 import { cn } from "@/lib/utils";
+import { SeatRing } from "@/components/SeatRing";
 
 const BOOKS: Record<string, string> = {
   wheel: "WHEEL · you pick on the turn",
@@ -18,8 +19,8 @@ export function SetupBoot() {
   const book = slot >= 1 ? playbookFor(slot, teams) : null;
 
   return (
-    <main className="relative z-[60] flex min-h-dvh items-center justify-center bg-[#050814] px-4 py-16 text-fg">
-      <div className="w-full max-w-lg space-y-5">
+    <main className="relative z-[60] flex min-h-dvh items-center justify-center bg-bg px-4 py-16 text-fg">
+      <div className="w-full max-w-lg min-w-0 space-y-5">
         <p className="font-mono text-[11px] font-bold tracking-[0.35em] text-accent-bright">BOOT LOAD</p>
         <h1 className="font-display text-4xl font-extrabold tracking-tight">Lock the room</h1>
         <p className="text-sm text-muted">Pick league size, tap YOUR seat, then LOCK ROOM.</p>
@@ -35,7 +36,7 @@ export function SetupBoot() {
                 onClick={() => setTeams(n)}
                 className={cn(
                   "h-16 rounded-xl font-mono text-2xl font-extrabold",
-                  teams === n ? "bg-[#3db4ff] text-black" : "border border-white/30 bg-[#0b1730] text-white",
+                  teams === n ? "bg-accent text-accent-fg" : "border border-border bg-elevated text-fg",
                 )}
               >
                 {n}
@@ -44,31 +45,9 @@ export function SetupBoot() {
           </div>
         </div>
 
-        <div>
+        <div className="min-w-0">
           <p className="mb-2 font-mono text-[10px] font-bold tracking-widest text-subtle">YOUR SEAT</p>
-          <div className="grid grid-cols-6 gap-2">
-            {Array.from({ length: teams }, (_, i) => i + 1).map((n) => {
-              const mine = n === slot;
-              const live = humanSlots.includes(n);
-              return (
-                <button
-                  key={n}
-                  type="button"
-                  data-qa={`seat-${n}`}
-                  onClick={() => cycleSeat(n)}
-                  className={cn(
-                    "flex h-14 flex-col items-center justify-center rounded-xl font-mono text-xs font-bold",
-                    mine && "bg-[#3db4ff] text-black",
-                    !mine && live && "border border-red-500 bg-red-950 text-red-100",
-                    !mine && !live && "border border-white/20 bg-[#0b1730] text-white",
-                  )}
-                >
-                  <span>{n}</span>
-                  <span className="text-[9px] tracking-widest">{mine ? "YOU" : live ? "H" : "CPU"}</span>
-                </button>
-              );
-            })}
-          </div>
+          <SeatRing teams={teams} slot={slot} humanSlots={humanSlots} onCycle={cycleSeat} />
           <p className="mt-2 text-xs text-muted">Tap other seats to mark humans (red). Leave the rest CPU.</p>
         </div>
 
@@ -83,7 +62,7 @@ export function SetupBoot() {
           data-qa="lock-room"
           disabled={slot < 1}
           onClick={lockRoom}
-          className="h-16 w-full rounded-2xl bg-[#3db4ff] text-lg font-extrabold tracking-widest text-black disabled:opacity-40"
+          className="h-16 w-full rounded-2xl bg-accent text-lg font-extrabold tracking-widest text-accent-fg disabled:opacity-40"
         >
           LOCK ROOM
         </button>

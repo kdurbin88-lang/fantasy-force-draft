@@ -12,9 +12,21 @@ try {
   await page.reload({ waitUntil: "networkidle" });
   await page.waitForTimeout(800);
 
-  const lock = page.locator('[data-qa="lock-room"]');
-  if (!(await lock.count())) fails.push("LOCK ROOM not on screen after clear storage");
+  await page.setViewportSize({ width: 360, height: 740 });
+  await page.reload({ waitUntil: "networkidle" });
+  await page.waitForTimeout(400);
+  const overflow = await page.evaluate(() => {
+    const el = document.querySelector('[data-qa="seat-12"]');
+    if (!el) return "missing seat 12";
+    const r = el.getBoundingClientRect();
+    if (r.width < 8 || r.height < 8) return "seat 12 has no size";
+    if (r.right > window.innerWidth + 2) return `seat 12 clipped right ${r.right} > ${window.innerWidth}`;
+    return null;
+  });
+  if (overflow) fails.push(overflow);
 
+  await page.setViewportSize({ width: 1400, height: 900 });
+  const lock = page.locator('[data-qa="lock-room"]');
   const twelve = page.locator('[data-qa="teams-12"]');
   const ten = page.locator('[data-qa="teams-10"]');
   await ten.click({ timeout: 5000 });
