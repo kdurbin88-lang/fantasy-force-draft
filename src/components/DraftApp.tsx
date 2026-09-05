@@ -22,6 +22,7 @@ import {
   VolumeX,
   Radio,
   Trophy,
+  Undo2,
 } from "lucide-react";
 import { PLAYERS_2026, type Player, type Position } from "@/lib/players";
 import { LAST_YEAR, outlookFor, projLine, type YearLine } from "@/lib/lastYear";
@@ -36,17 +37,24 @@ import {
   picksUntilTurn,
   quickMatch,
   eliteLeft,
+  livePickCount,
   rankBoard,
   snakeOwner,
+  vorp,
 } from "@/lib/engine";
-import { resolveTeam, useDraft } from "@/lib/store";
+import { resolveTeam, useDraft, withLiveRanks } from "@/lib/store";
 import { canvasHash, grabFrame, ocrSource } from "@/lib/ocr";
 import {
   ESPN_DRAFT_URL,
   ESPN_LEAGUE_ID,
   ESPN_LEAGUE_URL,
   pollEspnDraft,
+  fetchEspnRanks,
 } from "@/lib/espn";
+import { SetupBoot } from "@/components/SetupBoot";
+import { injuryFactor, sosPlayoff } from "@/lib/outlook";
+import { synergyTags, vona, handcuffFor } from "@/lib/synergy";
+import { parseDump, warRoomCard, matchInOrder } from "@/lib/warRoom";
 import { cn } from "@/lib/utils";
 import { playCue, setMuted, startBed, stopBed, warmupAudio } from "@/lib/sounds";
 
@@ -214,6 +222,142 @@ function FootballMark() {
   );
 }
 
+function PlayerSheet({
+  player,
+  team,
+  available,
+  untilMine,
+  taken,
+  onClose,
+  onTake,
+}: {
+  player: Player;
+  team: Player[];
+  available: Player[];
+  untilMine: number;
+  taken: boolean;
+  onClose: () => void;
+  onTake: (mine: boolean) => void;
+}) {
+  const tags = synergyTags(player, team);
+  const cuff = handcuffFor(player, PLAYERS_2026);
+  const injury = injuryFactor(player.name);
+  const sos = sosPlayoff(player.team);
+  const reasons = pickReasons(player, team, available, untilMine);
+  const v = vorp(player, available);
+  const n = vona(player, available);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+  return (
+    <div className="fixed inset-0 z-[80] flex items-end justify-center sm:items-center">
+      <button
+        type="button"
+        className="absolute inset-0 bg-black/70"
+        aria-label="Close player"
+        onClick={onClose}
+      />
+      <div className="relative z-10 max-h-[92dvh] w-full max-w-xl overflow-y-auto rounded-t-3xl border border-white/10 bg-[#071018] p-5 sm:rounded-3xl sm:p-6">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <PosChip pos={player.position} />
+              {player.isRookie && (
+                <span className="rounded-full border border-white/20 px-2 py-0.5 text-[10px] font-extrabold">
+                  ROOKIE
+                </span>
+              )}
+              {tags.map((t) => (
+                <span
+                  key={t}
+                  className="rounded-md border border-accent/40 px-2 py-0.5 font-mono text-[10px] font-bold tracking-widest text-accent-bright"
+                >
+                  {t}
+                </span>
+              ))}
+            </div>
+            <h2 className="mt-2 font-display text-4xl font-extrabold leading-none tracking-tight">
+              {player.name}
+            </h2>
+            <p className="mt-2 text-sm text-muted">
+              {player.team} · Bye {player.bye} · ADP {player.adp.toFixed(1)} · ESPN {player.espnRank ?? player.rank}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="grid size-10 shrink-0 place-items-center rounded-full border border-white/15"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+
+        <div className="mt-4 grid grid-cols-3 gap-2 font-mono text-[11px]">
+          <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2">
+            <div className="text-subtle">PROJ</div>
+            <div className="text-lg font-bold">{player.proj.toFixed(0)}</div>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2">
+            <div className="text-subtle">VORP</div>
+            <div className="text-lg font-bold">{v >= 0 ? "+" : ""}{v.toFixed(0)}</div>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2">
+            <div className="text-subtle">VONA</div>
+            <div className="text-lg font-bold">{n >= 0 ? "+" : ""}{n.toFixed(0)}</div>
+          </div>
+        </div>
+
+        <StatSheet player={player} />
+
+        <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+          <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2">
+            <div className="font-mono text-[10px] font-bold tracking-widest text-accent-bright">DURABILITY</div>
+            <p>{injury >= 0.95 ? "Clean bill" : injury < 0.85 ? "Injury tax" : "Watch the workload"} · {(injury * 100).toFixed(0)}%</p>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2">
+            <div className="font-mono text-[10px] font-bold tracking-widest text-accent-bright">W15–17 SOS</div>
+            <p>{sos > 1.05 ? "Soft playoff run" : sos < 0.95 ? "Brutal December" : "Neutral stretch"} · {sos.toFixed(2)}x</p>
+          </div>
+        </div>
+
+        {cuff && (
+          <p className="mt-3 text-sm text-muted">
+            Handcuff: <span className="font-bold text-fg">{cuff.name}</span> · {cuff.proj.toFixed(0)} PPR
+          </p>
+        )}
+
+        <div className="mt-3 rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm">
+          <div className="font-mono text-[10px] font-bold tracking-widest text-accent-bright">ENGINE</div>
+          <p>{reasons.join(" · ") || "Best remaining at this slot."}</p>
+        </div>
+
+        {!taken && (
+          <div className="mt-5 flex flex-col gap-2 sm:flex-row">
+            <button
+              type="button"
+              onClick={() => onTake(true)}
+              className="go-btn inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-2xl text-sm font-extrabold"
+            >
+              <Check className="size-4" />I TOOK THIS
+            </button>
+            <button
+              type="button"
+              onClick={() => onTake(false)}
+              className="stop-btn inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-2xl text-sm font-extrabold"
+            >
+              TAKEN
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function PosChip({ pos }: { pos: Position }) {
   const Icon = POS_ICON[pos];
   return (
@@ -277,6 +421,17 @@ export function DraftApp() {
   const reset = useDraft((s) => s.reset);
   const slot = useDraft((s) => s.slot);
   const setSlot = useDraft((s) => s.setSlot);
+  const teams = useDraft((s) => s.teams);
+  const configured = useDraft((s) => s.configured);
+  const unlockRoom = useDraft((s) => s.unlockRoom);
+  const leagueId = useDraft((s) => s.leagueId);
+  const setLeagueId = useDraft((s) => s.setLeagueId);
+  const humanSlots = useDraft((s) => s.humanSlots);
+  const cycleSeat = useDraft((s) => s.cycleSeat);
+  const queueIds = useDraft((s) => s.queueIds);
+  const setQueue = useDraft((s) => s.setQueue);
+  const undo = useDraft((s) => s.undo);
+  const keeperSeats = useDraft((s) => s.keeperSeats);
 
   const [query, setQuery] = useState("");
   const [takenQ, setTakenQ] = useState("");
@@ -293,6 +448,10 @@ export function DraftApp() {
   const [espnS2, setEspnS2] = useState("");
   const [showUnlock, setShowUnlock] = useState(false);
   const [muted, setMutedUi] = useState(false);
+  const [rankNote, setRankNote] = useState("");
+  const [beat, setBeat] = useState(0);
+  const [now, setNow] = useState(() => Date.now());
+  const [selected, setSelected] = useState<Player | null>(null);
   const dropRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -305,24 +464,34 @@ export function DraftApp() {
 
   const myTeam = useMemo(() => resolveTeam(myIds), [myIds]);
   const draftedSet = useMemo(() => new Set(draftedIds), [draftedIds]);
-  const available = useMemo(
-    () => PLAYERS_2026.filter((p) => !draftedSet.has(p.id)),
-    [draftedSet],
-  );
+  const available = useMemo(() => {
+    const base = PLAYERS_2026.filter((p) => !draftedSet.has(p.id));
+    return withLiveRanks(base, queueIds, draftedIds);
+  }, [draftedSet, queueIds, draftedIds]);
   const draftedPlayers = useMemo(() => resolveTeam(draftedIds), [draftedIds]);
-  const untilMine = picksUntilTurn(draftedIds.length, slot);
-  const clock = snakeOwner(draftedIds.length + 1, slot);
-  const rankedRows = useMemo(
-    () => rankBoard(available, myTeam, untilMine),
-    [available, myTeam, untilMine],
+  const liveCount = livePickCount(draftedIds, keeperSeats);
+  const untilMine = picksUntilTurn(liveCount, Math.max(slot, 1), teams);
+  const clock = snakeOwner(liveCount + 1, Math.max(slot, 1), teams);
+  const boardCtx = useMemo(
+    () => ({ draftedIds, slot: Math.max(slot, 1), humanSlots, teams, keeperSeats }),
+    [draftedIds, slot, humanSlots, teams, keeperSeats],
   );
-  const rec = rankedRows[0]?.player ?? null;
+  const rankedRows = useMemo(
+    () => rankBoard(available, myTeam, untilMine, boardCtx),
+    [available, myTeam, untilMine, boardCtx],
+  );
+  const recRow = rankedRows[0];
+  const rec = recRow?.player ?? null;
   const power = calculatePower(myTeam);
   const grade = gradeFor(power);
   const needs = needSlots(myTeam);
   const badges = badgesFor(myTeam);
   const wasMine = useRef(false);
   const why = rec ? pickReasons(rec, myTeam, available, untilMine) : [];
+  const room = useMemo(
+    () => warRoomCard(rankedRows, myTeam, available, untilMine, boardCtx),
+    [rankedRows, myTeam, available, untilMine, boardCtx],
+  );
   const wrElite = eliteLeft(available, "WR");
   const rbElite = eliteLeft(available, "RB");
   const ranked = useMemo(() => rankedRows.map((row) => row.player), [rankedRows]);
@@ -352,6 +521,10 @@ export function DraftApp() {
   }
 
   function takeTyped(mine: boolean) {
+    if (takenQ.trim().toLowerCase() === "/undo") {
+      runUndo();
+      return;
+    }
     const hit = quickMatch(takenQ, available);
     if (!hit) {
       setIngestMsg("No match — type more of the last name.");
@@ -362,8 +535,23 @@ export function DraftApp() {
     setIngestMsg(`${mine ? "You took" : "Taken"} ${hit.name}`);
   }
 
+  function runUndo() {
+    const id = undo();
+    const p = PLAYERS_2026.find((x) => x.id === id);
+    setTakenQ("");
+    setIngestMsg(p ? `Rewound ${p.name}` : "Nothing to undo");
+  }
+
   function runIngest(text: string, quiet = false, live = false) {
-    const hits = extractFromText(text, PLAYERS_2026);
+    const parsed = parseDump(text, PLAYERS_2026);
+    if (parsed.queue.length) {
+      setQueue(parsed.queue.map((p) => p.id));
+      if (!quiet) setWatchNote(`ESPN queue locked · ${parsed.queue.length} ranks`);
+    }
+    const hits =
+      parsed.taken.length || parsed.queue.length
+        ? parsed.taken
+        : extractFromText(text, PLAYERS_2026);
     const drafted = useDraft.getState().draftedIds;
     const fresh = hits.filter((p) => !drafted.includes(p.id));
     if (live && fresh.length > 5) {
@@ -374,6 +562,7 @@ export function DraftApp() {
     }
     const n = ingest(fresh);
     if (n) {
+      setBeat(Date.now());
       playCue("ingest");
       setIngestMsg(
         `Auto-caught ${n} pick${n === 1 ? "" : "s"}: ${fresh
@@ -531,7 +720,7 @@ export function DraftApp() {
     try {
       const result = await pollEspnDraft({
         data: {
-          leagueId: ESPN_LEAGUE_ID,
+          leagueId: leagueId || ESPN_LEAGUE_ID,
           swid: swid.trim() || undefined,
           espnS2: espnS2.trim() || undefined,
         },
@@ -542,6 +731,7 @@ export function DraftApp() {
         if (result.private) setShowUnlock(true);
         return;
       }
+      setBeat(Date.now());
       const blob = result.picks.map((p) => p.name).join("\n");
       const n = runIngest(blob, true);
       setWatchNote(
@@ -555,9 +745,25 @@ export function DraftApp() {
     }
   }
 
+  async function refreshRanks() {
+    setRankNote("Pulling ESPN PPR ranks…");
+    try {
+      const result = await fetchEspnRanks();
+      if (!result.ok || !result.names.length) {
+        setRankNote(result.message || "No ranks");
+        return;
+      }
+      const ordered = matchInOrder(result.names, PLAYERS_2026);
+      setQueue(ordered.map((p) => p.id));
+      setRankNote(`Live ESPN queue · ${ordered.length} players`);
+    } catch {
+      setRankNote("Rank pull failed — using snapshot");
+    }
+  }
+
   function startEspnWatch() {
     setWatchMode("espn");
-    setWatchNote("Syncing ESPN league 296381258…");
+    setWatchNote(`Syncing ESPN league ${leagueId || ESPN_LEAGUE_ID}…`);
     void pullEspn();
   }
 
@@ -667,6 +873,24 @@ export function DraftApp() {
     };
   }, []);
 
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z") {
+        e.preventDefault();
+        runUndo();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
+
+  if (!configured) return <SetupBoot />;
+
   return (
     <main className="min-h-dvh text-fg">
       <div className="fd-bar" />
@@ -687,7 +911,41 @@ export function DraftApp() {
         </div>
       )}
 
-      <div className="mx-auto max-w-7xl px-4 py-6 pb-24 sm:px-6">
+      <div className="mx-auto max-w-7xl px-3 py-4 pb-24 sm:px-6">
+        <div
+          className={cn(
+            "mb-4 flex flex-wrap items-center justify-between gap-2 rounded-2xl px-3 py-2",
+            beat && now - beat > 8000 ? "border border-red-500/50 bg-red-950/40" : "fd-glass",
+          )}
+        >
+          <div className="flex min-w-0 items-center gap-2 text-xs font-semibold">
+            <span
+              className={cn(
+                "size-2.5 shrink-0 rounded-full",
+                !beat
+                  ? "bg-muted"
+                  : now - beat > 8000
+                    ? "bg-red-500"
+                    : "animate-pulse bg-accent shadow-[0_0_12px_#2ba4ff]",
+              )}
+            />
+            <span className="truncate">
+              {beat
+                ? `Last ESPN sync: ${Math.max(0, Math.floor((now - beat) / 1000))}s ago`
+                : "No ESPN heartbeat yet"}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setWatchMode("espn");
+              void pullEspn();
+            }}
+            className="h-9 shrink-0 rounded-full border border-white/20 px-3 font-mono text-[11px] font-bold"
+          >
+            REFETCH
+          </button>
+        </div>
         {watchMode !== "off" && (
           <div className="fd-glass mb-5 flex items-center justify-between gap-3 rounded-2xl px-4 py-3">
             <div className="flex items-center gap-3 text-sm font-semibold">
@@ -777,7 +1035,7 @@ export function DraftApp() {
           </div>
         </header>
 
-        <div className="mb-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
+        <div className="mb-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto_auto]">
           <form
             className="fd-glass flex flex-col gap-2 rounded-2xl p-2 sm:flex-row sm:items-center sm:p-2"
             onSubmit={(e) => {
@@ -800,11 +1058,21 @@ export function DraftApp() {
             <button
               type="button"
               onClick={() => takeTyped(true)}
-              className="h-12 rounded-xl border border-white/20 px-5 text-sm font-bold"
+              className="h-12 rounded-xl border border-white/20 px-4 text-sm font-bold"
             >
               <span className="inline-flex items-center gap-2">
                 <Check className="size-4" />
                 That was me
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={runUndo}
+              className="h-12 rounded-xl border border-white/20 px-4 text-sm font-bold"
+            >
+              <span className="inline-flex items-center gap-2">
+                <Undo2 className="size-4" />
+                Undo
               </span>
             </button>
           </form>
@@ -816,13 +1084,46 @@ export function DraftApp() {
               onChange={(e) => setSlot(Number(e.target.value))}
               className="bg-transparent font-display text-2xl font-extrabold outline-none"
             >
-              {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => (
+              {Array.from({ length: teams }, (_, i) => i + 1).map((n) => (
                 <option key={n} value={n} className="bg-surface">
                   {n}
                 </option>
               ))}
             </select>
           </label>
+          <button
+            type="button"
+            onClick={unlockRoom}
+            className="fd-glass h-[60px] rounded-2xl px-4 text-xs font-bold tracking-widest"
+          >
+            ROOM
+          </button>
+        </div>
+        <div className="mb-4 fd-glass rounded-2xl px-3 py-3">
+          <div className="mb-2 font-mono text-[10px] font-bold tracking-widest text-subtle">
+            SEATS · TAP HUMAN / PRINTER · {humanSlots.length} LIVE
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {Array.from({ length: teams }, (_, i) => i + 1).map((n) => {
+              const mine = n === slot;
+              const live = humanSlots.includes(n);
+              return (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => cycleSeat(n)}
+                  className={cn(
+                    "h-9 min-w-9 rounded-lg px-2 font-mono text-xs font-bold",
+                    mine && "bg-accent text-black",
+                    !mine && live && "border border-red-500/80 bg-red-950 text-red-100",
+                    !mine && !live && "border border-white/15 text-muted",
+                  )}
+                >
+                  {mine ? "YOU" : live ? `H${n}` : n}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         <div
@@ -881,7 +1182,7 @@ export function DraftApp() {
           </div>
         )}
 
-        <div className="grid gap-5 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
+        <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
           <section className="space-y-5">
             <div
               className={cn(
@@ -895,13 +1196,26 @@ export function DraftApp() {
               <div className="font-display text-sm font-bold tracking-[0.32em] text-accent-bright">
                 <span className="inline-flex items-center gap-2">
                   <Radio className="size-4" />
-                  NEXT PICK
+                  NEXT {untilMine > 1 ? "TURN" : "PICK"}
                 </span>
               </div>
+              {untilMine > 1 && (
+                <p className="mt-1 text-[11px] font-bold tracking-wide text-accent-bright/80">
+                  Projected at pick {draftedIds.length + untilMine + 1} · elites above him go first
+                </p>
+              )}
               {rec ? (
                 <>
                   <div className="relative mt-2 flex flex-wrap items-end gap-3">
-                    <h2 className="font-display text-5xl font-extrabold leading-[0.92] tracking-tight sm:text-6xl">
+                    <h2
+                      className="min-w-0 cursor-pointer break-words font-display text-3xl font-extrabold leading-[0.92] tracking-tight underline decoration-white/20 underline-offset-4 sm:text-5xl lg:text-6xl"
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setSelected(rec)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") setSelected(rec);
+                      }}
+                    >
                       {rec.name}
                     </h2>
                     <PosChip pos={rec.position} />
@@ -919,16 +1233,86 @@ export function DraftApp() {
                   <p className="mt-3 text-sm font-medium text-muted">
                     {rec.team} · Bye {rec.bye} · ADP {rec.adp.toFixed(1)} · {rec.ppg.toFixed(1)} PPG
                   </p>
-                  <StatSheet player={rec} />
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    {why.map((tag) => (
+                    <button
+                      type="button"
+                      onClick={() => setSelected(rec)}
+                      className="mt-3 h-10 rounded-full border border-white/20 px-4 font-mono text-[11px] font-bold tracking-widest"
+                    >
+                      OPEN PLAYER CARD
+                    </button>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                    {(room?.tags ?? []).map((t) => (
                       <span
-                        key={tag}
-                        className="metric-badge-cyber"
+                        key={t}
+                        className="rounded-md border border-accent/40 bg-accent/10 px-2 py-0.5 font-mono text-[10px] font-bold tracking-widest text-accent-bright"
                       >
-                        {tag}
+                        {t === "HANDCUFF" ? "HANDCUFF" : "STACK"}
                       </span>
                     ))}
+                    {room && (
+                      <>
+                        <span className="rounded-md border border-white/15 px-2 py-0.5 font-mono text-[10px] font-bold">
+                          VORP {room.vorp >= 0 ? "+" : ""}
+                          {room.vorp.toFixed(0)}
+                        </span>
+                        <span className="rounded-md border border-white/15 px-2 py-0.5 font-mono text-[10px] font-bold">
+                          VONA {room.vona >= 0 ? "+" : ""}
+                          {room.vona.toFixed(0)}
+                        </span>
+                      </>
+                    )}
+                  </div>
+                  <StatSheet player={rec} />
+                  <div className="mt-4 grid min-w-0 grid-cols-1 gap-2 text-sm sm:grid-cols-2">
+                    <div className="min-w-0 rounded-xl border border-white/10 bg-black/20 px-3 py-2">
+                      <div className="font-mono text-[10px] font-bold tracking-widest text-accent-bright">
+                        WHY
+                      </div>
+                      <p className="break-words">{room?.why || why.join(" · ")}</p>
+                    </div>
+                    <div className="min-w-0 rounded-xl border border-white/10 bg-black/20 px-3 py-2">
+                      <div className="font-mono text-[10px] font-bold tracking-widest text-accent-bright">
+                        DEAD ZONE
+                      </div>
+                      <p className="break-words">{room?.deadZone}</p>
+                    </div>
+                    <div className="min-w-0 rounded-xl border border-white/10 bg-black/20 px-3 py-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="font-mono text-[10px] font-bold tracking-widest text-accent-bright">
+                          SHIELD
+                        </div>
+                        <span className="shrink-0 font-mono text-sm font-bold">{room?.integrity ?? 100}%</span>
+                      </div>
+                      <p className="break-words text-muted">
+                        {room?.shield.length
+                          ? room.shield.map((p) => p.name).join(" · ")
+                          : "Printers only — or a human is in the way"}
+                      </p>
+                    </div>
+                    <div className="min-w-0 rounded-xl border border-white/10 bg-black/20 px-3 py-2 sm:col-span-2">
+                      <div className="font-mono text-[10px] font-bold tracking-widest text-accent-bright">
+                        TIER CLIFF
+                      </div>
+                      <p className="break-words">{room?.cliff?.label ?? "No cliff — slopes are even"}</p>
+                    </div>
+                    <div className="min-w-0 rounded-xl border border-white/10 bg-black/20 px-3 py-2 sm:col-span-2">
+                      <div className="font-mono text-[10px] font-bold tracking-widest text-accent-bright">
+                        INTEL
+                      </div>
+                      <p className="break-words">{room?.intel}</p>
+                    </div>
+                    <div className="min-w-0 rounded-xl border border-white/10 bg-black/20 px-3 py-2 sm:col-span-2">
+                      <div className="font-mono text-[10px] font-bold tracking-widest text-accent-bright">
+                        CPU FALLBACK
+                      </div>
+                      <p className="break-words">
+                        {room?.cpuFallback
+                          ? `${room.cpuFallback.name} · ${room.cpuFallback.position}`
+                          : room?.contingency
+                            ? `${room.contingency.name} · ${room.contingency.position}`
+                            : "—"}
+                      </p>
+                    </div>
                   </div>
                   <div className="relative z-20 mt-6 flex flex-col gap-3 sm:flex-row">
                     <button
@@ -987,9 +1371,10 @@ export function DraftApp() {
                 {filtered.slice(0, 40).map((p) => (
                   <div
                     key={p.id}
-                    className="fd-pill flex items-center justify-between gap-2 rounded-2xl px-3 py-3"
+                    className="fd-pill flex cursor-pointer items-center justify-between gap-2 rounded-2xl px-3 py-3"
+                    onClick={() => setSelected(p)}
                   >
-                    <div className="flex min-w-0 items-center gap-3">
+                    <div className="flex min-w-0 flex-1 items-center gap-3 text-left">
                       <div className="font-display w-8 text-center text-lg font-extrabold text-white/35">
                         {p.rank}
                       </div>
@@ -997,6 +1382,14 @@ export function DraftApp() {
                         <div className="flex items-center gap-2">
                           <PosChip pos={p.position} />
                           <span className="truncate text-sm font-bold">{p.name}</span>
+                          {synergyTags(p, myTeam).map((t) => (
+                            <span
+                              key={t}
+                              className="rounded border border-white/20 px-1 font-mono text-[9px] font-bold tracking-widest text-accent-bright"
+                            >
+                              {t}
+                            </span>
+                          ))}
                         </div>
                         <div className="mt-0.5 text-[11px] font-medium text-subtle">
                           {p.team} · {p.proj.toFixed(0)} PPR
@@ -1014,14 +1407,20 @@ export function DraftApp() {
                     <div className="flex shrink-0 gap-1">
                       <button
                         type="button"
-                        onClick={() => take(p, true)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          take(p, true);
+                        }}
                         className="fd-btn h-9 rounded-full px-3 text-[11px] font-extrabold"
                       >
                         MINE
                       </button>
                       <button
                         type="button"
-                        onClick={() => take(p, false)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          take(p, false);
+                        }}
                         className="h-9 rounded-full border border-white/20 px-3 text-[11px] font-extrabold"
                       >
                         TAKEN
@@ -1110,9 +1509,14 @@ export function DraftApp() {
               {showUnlock && (
                 <div className="mt-3 space-y-2 rounded-2xl border border-white/10 bg-black/20 p-3">
                   <p className="text-xs">
-                    Private league. Window watch still works. Optional ESPN session
-                    stays on this device.
+                    Private league. Paste SWID + espn_s2 from ESPN cookies, or watch the window.
                   </p>
+                  <input
+                    value={leagueId}
+                    onChange={(e) => setLeagueId(e.target.value)}
+                    placeholder="League ID"
+                    className="h-10 w-full rounded-xl border border-white/10 bg-black/20 px-3 text-sm outline-none"
+                  />
                   <input
                     value={swid}
                     onChange={(e) => setSwid(e.target.value)}
@@ -1134,6 +1538,19 @@ export function DraftApp() {
                   </button>
                 </div>
               )}
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => void refreshRanks()}
+                  className="h-10 rounded-full border border-white/15 px-4 text-xs font-bold"
+                >
+                  Refresh ESPN ranks
+                </button>
+                {rankNote ? <span className="text-xs text-muted">{rankNote}</span> : null}
+                {queueIds.length ? (
+                  <span className="text-xs text-muted">Queue {queueIds.length}</span>
+                ) : null}
+              </div>
               <video ref={videoRef} className="hidden" muted playsInline />
               <textarea
                 value={raw}
@@ -1196,7 +1613,8 @@ export function DraftApp() {
                   {myTeam.map((p) => (
                     <li
                       key={p.id}
-                      className="fd-pill flex items-center justify-between rounded-xl px-3 py-2 text-sm"
+                      className="fd-pill flex cursor-pointer items-center justify-between rounded-xl px-3 py-2 text-sm"
+                      onClick={() => setSelected(p)}
                     >
                       <span className="flex items-center gap-2 font-bold">
                         <PosChip pos={p.position} />
@@ -1223,7 +1641,11 @@ export function DraftApp() {
               ) : (
                 <ul className="mt-3 max-h-56 space-y-1 overflow-y-auto text-sm">
                   {draftedPlayers.map((p) => (
-                    <li key={p.id} className="flex justify-between gap-2 py-1">
+                    <li
+                      key={p.id}
+                      className="flex cursor-pointer justify-between gap-2 py-1"
+                      onClick={() => setSelected(p)}
+                    >
                       <span className="font-semibold">
                         {p.name}
                         {myIds.includes(p.id) ? " · YOU" : ""}
@@ -1237,6 +1659,20 @@ export function DraftApp() {
           </aside>
         </div>
       </div>
+      {selected && (
+        <PlayerSheet
+          player={selected}
+          team={myTeam}
+          available={available}
+          untilMine={untilMine}
+          taken={draftedSet.has(selected.id)}
+          onClose={() => setSelected(null)}
+          onTake={(mine) => {
+            take(selected, mine);
+            setSelected(null);
+          }}
+        />
+      )}
     </main>
   );
 }

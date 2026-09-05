@@ -155,3 +155,42 @@ export const pollEspnDraft = createServerFn({ method: "POST" })
           : "Connected. Draft has not started.",
     };
   });
+
+export const fetchEspnRanks = createServerFn({ method: "POST" }).handler(async () => {
+  const url = `https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/${ESPN_SEASON}/segments/0/leaguedefaults/3?view=kona_player_info`;
+  const res = await fetch(url, {
+    headers: {
+      "User-Agent": "Mozilla/5.0",
+      "x-fantasy-filter": JSON.stringify({
+        players: {
+          limit: 300,
+          sortDraftRanks: { sortPriority: 1, sortAsc: true, value: "PPR" },
+          filterActive: { value: true },
+        },
+      }),
+    },
+  });
+  if (!res.ok) {
+    return { ok: false as const, message: `ESPN ranks ${res.status}`, names: [] as string[] };
+  }
+  const json = (await res.json()) as {
+    players?: Array<{
+      player?: {
+        fullName?: string;
+        draftRanksByRankType?: { PPR?: { rank?: number } };
+      };
+    }>;
+  };
+  const rows = (json.players ?? [])
+    .map((row) => ({
+      name: row.player?.fullName ?? "",
+      rank: row.player?.draftRanksByRankType?.PPR?.rank ?? 9999,
+    }))
+    .filter((r) => r.name)
+    .sort((a, b) => a.rank - b.rank);
+  return {
+    ok: true as const,
+    message: `${rows.length} ESPN PPR ranks`,
+    names: rows.map((r) => r.name),
+  };
+});
