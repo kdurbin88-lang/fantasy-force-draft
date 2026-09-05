@@ -495,19 +495,47 @@ function zeroRbHatch(player: Player, team: Player[]): number {
   return 0.88;
 }
 
-/** First 4 roster picks are WR. No committee RBs, QBs, or kickers. */
-function wrFirstFour(player: Player, team: Player[]): number {
+/** Dynamic: WR to start, then whoever fills the next starter hole. */
+function lineupNeed(player: Player, team: Player[]): number {
   const c = counts(team);
-  if (team.length < 4) {
-    if (player.position === "WR") return 1.55;
-    if (player.position === "TE" && (player.espnRank ?? player.rank) <= 10) return 0.7;
-    return 0.05;
+  const n = team.length;
+  const espn = player.espnRank ?? player.rank;
+  const pos = player.position;
+
+  if (pos === "K" || pos === "DST") return n >= 13 ? 1 : 0.04;
+  if (pos === "QB") return n >= 8 && c.QB < 1 ? 1.1 : 0.06;
+
+  // Opening script: first 4 picks are WRs (3 WR + FLEX is the league).
+  if (n < 4) {
+    if (pos === "WR") return 1.6;
+    if (pos === "TE" && espn <= 8) return 0.75;
+    if (pos === "RB" && espn <= 8 && c.WR >= 2) return 0.9;
+    return 0.06;
   }
-  if (c.RB >= 2 && c.WR < 3) {
-    if (player.position === "WR") return 1.4;
-    if (player.position === "RB") return 0.08;
+
+  const wrHole = c.WR < 3;
+  const rbHole = c.RB < 2;
+  const teHole = c.TE < 1;
+  const flexHole = flexFilled(team) < 1;
+
+  if (pos === "WR") {
+    if (wrHole) return 1.55;
+    if (flexHole) return 1.22;
+    return 0.28;
   }
-  return 1;
+  if (pos === "RB") {
+    if (rbHole && !wrHole) return 1.5;
+    if (rbHole && wrHole) return 0.55;
+    if (c.RB >= 2 && wrHole) return 0.07;
+    if (flexHole && c.RB < 3) return 0.7;
+    return 0.18;
+  }
+  if (pos === "TE") {
+    if (teHole && espn <= 12 && !wrHole && !rbHole) return 1.25;
+    if (teHole && n >= 6) return 0.95;
+    return 0.2;
+  }
+  return 0.15;
 }
 
 function heatMult(need: boolean, heat: number, onClock: boolean): number {
@@ -661,8 +689,7 @@ function stackBonus(player: Player, team: Player[]): number {
 function survivalMult(player: Player, available: Player[], untilMine: number): number {
   if (untilMine <= 1) return 1;
   const doomed = adpWindow(available, untilMine).some((p) => p.id === player.id);
-  // Waiting: never recommend someone autodraft will take before you're back.
-  return doomed ? 0.2 : 1.12;
+  return doomed ? 0.55 : 1;
 }
 
 export function trueValueOf(player: Player, pool: Player[] = PLAYERS_2026): number {
@@ -829,7 +856,7 @@ export function rankBoard(available: Player[], team: Player[], untilMine = 0, ct
       let score = ev.score * cliff;
       score *= valueClash(player, team, available);
       score *= zeroRbHatch(player, team);
-      score *= wrFirstFour(player, team);
+      score *= lineupNeed(player, team);
       const pickNum = livePickCount(draftedIds, ctx.keeperSeats) + 1;
       const nextPick = pickNum + Math.max(untilMine - 1, 0);
       const reach = player.adp - nextPick;
@@ -980,6 +1007,8 @@ export function pickReasons(
   const ev = evaluate(player, team, available, untilMine);
   const reasons: string[] = [];
   if (team.length < 4 && player.position === "WR") reasons.push("WR script — first 4 picks");
+  if (c.WR < 3 && player.position === "WR") reasons.push("You still need a starting WR");
+  if (c.RB >= 2 && c.WR < 3 && player.position === "RB") reasons.push("Skip — WR hole is bigger");
   if (ev.last >= 1.4) reasons.push("Last difference-maker at this position");
   if (player.position === "RB" && c.RB === 0 && team.length >= 3 && player.rec >= 55) {
     reasons.push("Pass-catching Zero-RB");

@@ -153,4 +153,18 @@ describe("Round 1 never recommends Rashee Rice", () => {
     );
     assert.ok(!top.some((p) => p.name === "Rhamondre Stevenson"));
   });
+
+  it("2 RB + 2 WR remaining hole is WR, not a 3rd back", () => {
+    const mine = ["Jahmyr Gibbs", "Bijan Robinson", "Puka Nacua", "Ja'Marr Chase"].map(byName);
+    const taken = new Set(mine.map((p) => p.id));
+    const avail = PLAYERS_2026.filter((p) => !taken.has(p.id));
+    const rows = rankBoard(avail, mine, 6, {
+      slot: 4,
+      teams: 12,
+      draftedIds: [...taken],
+      humanSlots: [],
+    });
+    assert.equal(rows[0].player.position, "WR", `got ${rows[0].player.name} ${rows[0].player.position}`);
+    assert.notEqual(rows[0].player.name, "Rhamondre Stevenson");
+  });
 });
