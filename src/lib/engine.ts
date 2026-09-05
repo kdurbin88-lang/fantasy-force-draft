@@ -48,7 +48,7 @@ export function playbookFor(slot: number, teams = TEAMS): "wheel" | "mid" | "anc
 export const ROSTER = {
   QB: 1,
   RB: 2,
-  WR: 3,
+  WR: 2,
   TE: 1,
   FLEX: 1,
   K: 1,
@@ -311,12 +311,10 @@ function urgency(pos: Position, team: Player[]): number {
   }
   if (pos === "TE") return c.TE >= 1 ? 0.12 : 1.22;
   if (pos === "WR") {
-    if (c.WR === 0) return n === 0 ? 1.12 : 1.55;
+    if (c.WR === 0) return n === 0 ? 1.18 : 1.5;
     if (c.WR === 1) return 1.38;
-    if (c.WR === 2) return 1.22;
-    if (c.WR === 3 && !flex) return 1.08;
-    if (c.WR === 3) return 0.42;
-    return 0.22;
+    if (c.WR >= ROSTER.WR && !flex) return 1.1;
+    return 0.32;
   }
   if (pos === "RB") {
     if (c.RB === 0) return n === 0 ? 1.04 : 1.68;
@@ -387,7 +385,7 @@ export function positionHeat(
       pos === "RB"
         ? c.RB < 2
         : pos === "WR"
-          ? c.WR < 3
+          ? c.WR < ROSTER.WR
           : pos === "QB"
             ? c.QB < 1
             : pos === "TE"
@@ -455,7 +453,7 @@ export function hungryHumanCount(
     const who = ownerSlot(live + i, leagueSize);
     if (who === slot || !humanSlots.includes(who)) continue;
     const c = counts(byTeam[who] ?? []);
-    if (pos === "WR" && c.WR < 3) n += 1;
+    if (pos === "WR" && c.WR < ROSTER.WR) n += 1;
     else if (pos === "RB" && c.RB < 2) n += 1;
     else if (pos === "TE" && c.TE < 1) n += 1;
   }
@@ -495,7 +493,7 @@ function zeroRbHatch(player: Player, team: Player[]): number {
   return 0.88;
 }
 
-/** Dynamic: WR to start, then whoever fills the next starter hole. */
+/** 2 WR / 2 RB / FLEX. Fill starters, then FLEX. No 4-WR script. */
 function lineupNeed(player: Player, team: Player[]): number {
   const c = counts(team);
   const n = team.length;
@@ -505,30 +503,26 @@ function lineupNeed(player: Player, team: Player[]): number {
   if (pos === "K" || pos === "DST") return n >= 13 ? 1 : 0.04;
   if (pos === "QB") return n >= 8 && c.QB < 1 ? 1.1 : 0.06;
 
-  // Opening script: first 4 picks are WRs (3 WR + FLEX is the league).
-  if (n < 4) {
-    if (pos === "WR") return 1.6;
-    if (pos === "TE" && espn <= 8) return 0.75;
-    if (pos === "RB" && espn <= 8 && c.WR >= 2) return 0.9;
-    return 0.06;
-  }
-
-  const wrHole = c.WR < 3;
-  const rbHole = c.RB < 2;
+  const wrHole = c.WR < ROSTER.WR;
+  const rbHole = c.RB < ROSTER.RB;
   const teHole = c.TE < 1;
   const flexHole = flexFilled(team) < 1;
 
+  if (n < 4) {
+    if (pos === "WR" || pos === "RB") return 1.4;
+    if (pos === "TE" && espn <= 8) return 0.8;
+    return 0.06;
+  }
+
   if (pos === "WR") {
-    if (wrHole) return 1.55;
-    if (flexHole) return 1.22;
+    if (wrHole) return 1.5;
+    if (flexHole) return 1.18;
     return 0.28;
   }
   if (pos === "RB") {
-    if (rbHole && !wrHole) return 1.5;
-    if (rbHole && wrHole) return 0.55;
-    if (c.RB >= 2 && wrHole) return 0.07;
-    if (flexHole && c.RB < 3) return 0.7;
-    return 0.18;
+    if (rbHole) return 1.5;
+    if (flexHole) return 1.12;
+    return 0.22;
   }
   if (pos === "TE") {
     if (teHole && espn <= 12 && !wrHole && !rbHole) return 1.25;
@@ -547,7 +541,7 @@ function heatMult(need: boolean, heat: number, onClock: boolean): number {
 function holeAt(pos: Position, team: Player[]): boolean {
   const c = counts(team);
   if (pos === "RB") return c.RB < 2;
-  if (pos === "WR") return c.WR < 3;
+  if (pos === "WR") return c.WR < ROSTER.WR;
   if (pos === "TE") return c.TE < 1;
   if (pos === "QB") return c.QB < 1;
   return false;
@@ -561,7 +555,7 @@ function fitsEspnStarter(roster: Player[], player: Player): boolean {
   if (player.position === "DST") return c.DST < 1 && roster.length >= 12;
   if (player.position === "TE") return c.TE < 1 || flex < 1;
   if (player.position === "RB") return c.RB < 2 || flex < 1;
-  if (player.position === "WR") return c.WR < 3 || flex < 1;
+  if (player.position === "WR") return c.WR < ROSTER.WR || flex < 1;
   return true;
 }
 
@@ -597,7 +591,7 @@ function humanTake(available: Player[], roster: Player[]): Player | null {
     const rb = byValue.find((p) => p.position === "RB");
     if (rb) return rb;
   }
-  if (c.WR < 3) {
+  if (c.WR < ROSTER.WR) {
     const wr = byValue.find((p) => p.position === "WR");
     if (wr) return wr;
   }
@@ -1006,16 +1000,21 @@ export function pickReasons(
   const c = counts(team);
   const ev = evaluate(player, team, available, untilMine);
   const reasons: string[] = [];
-  if (team.length < 4 && player.position === "WR") reasons.push("WR script — first 4 picks");
-  if (c.WR < 3 && player.position === "WR") reasons.push("You still need a starting WR");
-  if (c.RB >= 2 && c.WR < 3 && player.position === "RB") reasons.push("Skip — WR hole is bigger");
+  if (team.length < 4 && (player.position === "WR" || player.position === "RB")) {
+    reasons.push("Starter script — RB/WR first");
+  }
+  if (c.WR < ROSTER.WR && player.position === "WR") reasons.push("You still need a starting WR");
+  if (c.RB < ROSTER.RB && player.position === "RB") reasons.push("You still need a starting RB");
+  if (c.RB >= 2 && c.WR >= 2 && flexFilled(team) < 1 && (player.position === "WR" || player.position === "RB")) {
+    reasons.push("FLEX still empty");
+  }
   if (ev.last >= 1.4) reasons.push("Last difference-maker at this position");
   if (player.position === "RB" && c.RB === 0 && team.length >= 3 && player.rec >= 55) {
     reasons.push("Pass-catching Zero-RB");
   }
   if (player.position === "RB" && c.RB === 0) reasons.push("You have no starting RB");
-  else if (player.position === "WR" && c.WR < 3) reasons.push("Starting WR hole");
-  else if (player.position === "WR" && c.WR === 3) reasons.push("FLEX / your 4th WR");
+  else if (player.position === "WR" && c.WR < ROSTER.WR) reasons.push("Starting WR hole");
+  else if (player.position === "WR" && c.WR >= ROSTER.WR) reasons.push("FLEX / extra WR");
   else if (player.position === "RB" && c.RB === 1) reasons.push("Locks the RB2 hole");
   else if (player.position === "TE" && c.TE < 1 && player.proj >= 210) {
     reasons.push("The TE everyone else streams");

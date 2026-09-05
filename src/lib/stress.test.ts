@@ -139,32 +139,36 @@ describe("Round 1 never recommends Rashee Rice", () => {
     assert.equal(hit[0]?.name, "Justin Jefferson");
   });
 
-  it("first four roster picks are WRs, not Rhamondre Stevenson", () => {
+  it("first four roster picks are WR or RB, not QB/K/DST", () => {
     const rows = rankBoard(PLAYERS_2026, [], 3, {
-      slot: 4,
+      slot: 6,
       teams: 12,
       draftedIds: [],
       humanSlots: [],
     });
     const top = rows.slice(0, 6).map((r) => r.player);
     assert.ok(
-      top.every((p) => p.position === "WR"),
+      top.every((p) => p.position === "WR" || p.position === "RB"),
       `got ${top.map((p) => `${p.name} ${p.position}`).join(", ")}`,
     );
     assert.ok(!top.some((p) => p.name === "Rhamondre Stevenson"));
   });
 
-  it("2 RB + 2 WR remaining hole is WR, not a 3rd back", () => {
+  it("2 RB + 2 WR remaining hole is FLEX, not a kicker", () => {
     const mine = ["Jahmyr Gibbs", "Bijan Robinson", "Puka Nacua", "Ja'Marr Chase"].map(byName);
     const taken = new Set(mine.map((p) => p.id));
     const avail = PLAYERS_2026.filter((p) => !taken.has(p.id));
     const rows = rankBoard(avail, mine, 6, {
-      slot: 4,
+      slot: 6,
       teams: 12,
       draftedIds: [...taken],
       humanSlots: [],
     });
-    assert.equal(rows[0].player.position, "WR", `got ${rows[0].player.name} ${rows[0].player.position}`);
-    assert.notEqual(rows[0].player.name, "Rhamondre Stevenson");
+    assert.ok(
+      rows[0].player.position === "WR" || rows[0].player.position === "RB" || rows[0].player.position === "TE",
+      `got ${rows[0].player.name} ${rows[0].player.position}`,
+    );
+    assert.notEqual(rows[0].player.position, "K");
+    assert.notEqual(rows[0].player.position, "DST");
   });
 });

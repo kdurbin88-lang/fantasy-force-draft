@@ -63,7 +63,7 @@ export function describeHumanThreat(
     const roster = teams[who] ?? [];
     const c = counts(roster);
     const hungry =
-      (player.position === "WR" && c.WR < 3) ||
+      (player.position === "WR" && c.WR < 2) ||
       (player.position === "RB" && c.RB < 2) ||
       (player.position === "TE" && c.TE < 1);
     if (hungry) {

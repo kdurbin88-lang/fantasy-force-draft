@@ -251,7 +251,7 @@ export function buildRecap(team: Player[], available: Player[], opts: RecapOpts 
   const risks: string[] = [];
   if (wr.length >= 3 && wr[2].ppg >= 14) {
     strengths.push(
-      `WR1–3 average ${(wr.slice(0, 3).reduce((s, p) => s + p.ppg, 0) / 3).toFixed(1)} PPG. In 3-WR PPR that is a weekly floor other managers cannot match.`,
+      `WR1–2 average ${(wr.slice(0, 2).reduce((s, p) => s + p.ppg, 0) / Math.max(wr.slice(0, 2).length, 1)).toFixed(1)} PPG. In 2-WR + FLEX PPR that sets your weekly floor.`,
     );
   }
   if (rb.length >= 2 && rb[0].ppg >= 16) {
@@ -270,7 +270,7 @@ export function buildRecap(team: Player[], available: Player[], opts: RecapOpts 
     strengths.push(`Monte Carlo: ${sim.clear115.toFixed(0)}% of weeks clear 115 points — a playoff-seed machine.`);
   }
   if (c.RB < 2) risks.push("You cannot field two starting RBs. One injury or bye and the week is dead.");
-  if (c.WR < 3) risks.push("3-WR leagues punish thin WR rooms.");
+  if (c.WR < 2) risks.push("Only one starting WR — FLEX cannot cover both WR slots.");
   if (injuryIndex < 0.9) {
     risks.push(`Injury index ${(injuryIndex * 100).toFixed(0)}/100. Load-bearing names with soft-tissue history.`);
   }
