@@ -1715,6 +1715,7 @@ export function DraftApp() {
                                 ? ` · ${p.rec.toFixed(0)} rec · ${p.recYds.toFixed(0)} yds`
                                 : ""}
                           {p.isRookie ? " · R" : ""}
+                          {p.isDarkHorse ? " · DH" : ""}
                           {" · "}
                           {rosterImpact(p, myTeam, liveCount + 1).grade}
                         </div>

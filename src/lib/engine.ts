@@ -745,7 +745,14 @@ export function evaluate(player: Player, team: Player[], available: Player[], un
   const last = lastEliteBump(player, team, available);
   const delta = lineupDelta(team, player);
   const blended = delta * 0.62 + trueValue * 0.38;
-  const score = blended * s * u * survive * last + stackBonus(player, team) - byeHit(player, team);
+  let score = blended * s * u * survive * last + stackBonus(player, team) - byeHit(player, team);
+  if (player.isDarkHorse && team.length >= 6 && (player.position === "RB" || player.position === "WR" || player.position === "TE")) {
+    const startersFilled = counts(team).RB >= 2 && counts(team).WR >= 3;
+    score += startersFilled ? 14 : 7;
+    if (player.adp - (team.length + 1) >= 12) score += 6;
+  } else if (player.isRookie && team.length >= 8 && player.position !== "QB") {
+    score += 5;
+  }
   return { vorp: v, trueValue, urgency: u, scarcity: s, injury, sos, score, delta, last };
 }
 
@@ -980,6 +987,7 @@ export function pickReasons(
     reasons.push("ESPN rank ahead of ADP");
   }
   if (player.isRookie) reasons.push("Rookie upside");
+  if (player.isDarkHorse) reasons.push("Rookie dark horse");
   const unique = [...new Set(reasons)];
   if (unique.length === 0) unique.push("Best player left");
   return unique.slice(0, 3);
