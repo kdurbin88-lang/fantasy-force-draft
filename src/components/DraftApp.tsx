@@ -725,6 +725,7 @@ export function DraftApp() {
   const [selected, setSelected] = useState<Player | null>(null);
   const [showRecap, setShowRecap] = useState(false);
   const recapFired = useRef(false);
+  const [hydrated, setHydrated] = useState(false);
   const dropRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -1227,6 +1228,19 @@ export function DraftApp() {
     return () => window.removeEventListener("keydown", onKey);
   });
 
+  useEffect(() => {
+    const done = () => setHydrated(true);
+    if (useDraft.persist.hasHydrated()) done();
+    return useDraft.persist.onFinishHydration(done);
+  }, []);
+
+  if (!hydrated) {
+    return (
+      <main className="grid min-h-dvh place-items-center text-sm font-bold tracking-widest text-muted">
+        LOADING ROOM
+      </main>
+    );
+  }
   if (!configured) return <SetupBoot />;
 
   return (

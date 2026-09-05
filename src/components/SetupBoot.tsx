@@ -35,7 +35,8 @@ export function SetupBoot() {
           Lock the room before the engine talks.
         </h1>
         <p className="text-sm text-muted">
-          Tap a seat: Printer → Human → You. Size the league. Then lock.
+          1. Click your seat (turns blue — YOU). 2. Click other humans (red). 3. Hit LOCK ROOM.
+          It will not continue until you press that button.
         </p>
 
         <div className="fd-glass flex items-center justify-between rounded-2xl px-4 py-3">

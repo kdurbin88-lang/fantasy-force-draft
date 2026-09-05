@@ -75,7 +75,6 @@ export const useDraft = create<DraftState>()(
           return;
         }
         if (n === slot) {
-          set({ configured: false, slot: 0 });
           return;
         }
         if (humanSlots.includes(n)) {
@@ -145,9 +144,41 @@ export const useDraft = create<DraftState>()(
         });
         return fresh.length;
       },
-      reset: () => set({ draftedIds: [], myIds: [], lastIngest: "", queueIds: [], keeperSeats: {} }),
+      reset: () =>
+        set({
+          draftedIds: [],
+          myIds: [],
+          lastIngest: "",
+          queueIds: [],
+          keeperSeats: {},
+          configured: false,
+        }),
     }),
-    { name: "fantasy-force-draft", skipHydration: false },
+    {
+      name: "fantasy-force-draft",
+      version: 2,
+      skipHydration: false,
+      migrate: (persisted) => {
+        const p = persisted as DraftState;
+        const drafted = Array.isArray(p.draftedIds) ? p.draftedIds : [];
+        return {
+          ...p,
+          configured: Boolean(p.configured && drafted.length > 0),
+        };
+      },
+      partialize: (s) => ({
+        draftedIds: s.draftedIds,
+        myIds: s.myIds,
+        lastIngest: s.lastIngest,
+        slot: s.slot,
+        teams: s.teams,
+        leagueId: s.leagueId,
+        humanSlots: s.humanSlots,
+        queueIds: s.queueIds,
+        keeperSeats: s.keeperSeats,
+        configured: s.configured && s.draftedIds.length > 0,
+      }),
+    },
   ),
 );
 
