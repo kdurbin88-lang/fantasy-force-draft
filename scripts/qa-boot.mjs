@@ -31,11 +31,8 @@ try {
   const ten = page.locator('[data-qa="teams-10"]');
   await ten.click({ timeout: 5000 });
   await page.waitForTimeout(200);
-  const tenBg = await ten.evaluate((el) => getComputedStyle(el).backgroundColor);
-  if (!tenBg.includes("61") && !tenBg.includes("3db4ff") && !String(tenBg).includes("61, 180")) {
-    // accent #3db4ff = rgb(61, 180, 255)
-    if (!tenBg.includes("61, 180, 255")) fails.push(`10 click did not highlight, bg=${tenBg}`);
-  }
+  const tenBg = await ten.evaluate((el) => el.className);
+  if (!/\bfd-btn\b/.test(tenBg)) fails.push(`10 click did not select, class=${tenBg}`);
 
   await twelve.click();
   await page.waitForTimeout(200);

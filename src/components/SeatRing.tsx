@@ -23,9 +23,9 @@ export function SeatRing({ teams, slot, humanSlots, onCycle }: SeatRingProps) {
               onClick={() => onCycle(n)}
               className={cn(
                 "flex aspect-square w-full min-w-0 flex-col items-center justify-center rounded-full font-mono text-[10px] font-bold sm:text-xs",
-                mine && "bg-accent text-accent-fg",
-                !mine && live && "border-2 border-danger bg-danger/20 text-danger",
-                !mine && !live && "border border-border bg-elevated text-muted",
+                mine && "fd-btn",
+                !mine && live && "fd-glass border-danger text-danger",
+                !mine && !live && "fd-glass text-muted",
               )}
             >
               <span>{n}</span>
@@ -37,11 +37,9 @@ export function SeatRing({ teams, slot, humanSlots, onCycle }: SeatRingProps) {
         })}
       </div>
       <div className="mt-3 grid grid-cols-3 gap-2 font-mono text-[10px] font-bold tracking-widest">
-        <div className="rounded-full border border-border px-2 py-2 text-center">YOU {slot || "—"}</div>
-        <div className="rounded-full border border-danger/50 px-2 py-2 text-center text-danger">
-          HUMAN {humanSlots.length}
-        </div>
-        <div className="rounded-full border border-border px-2 py-2 text-center">CPU {printers}</div>
+        <div className="fd-glass px-2 py-2 text-center">YOU {slot || "—"}</div>
+        <div className="fd-glass px-2 py-2 text-center text-danger">HUMAN {humanSlots.length}</div>
+        <div className="fd-glass px-2 py-2 text-center">CPU {printers}</div>
       </div>
     </div>
   );
