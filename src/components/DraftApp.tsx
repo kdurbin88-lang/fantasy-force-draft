@@ -777,7 +777,9 @@ export function DraftApp() {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase().replace(/['’.`]/g, "");
-    const pool = q ? available : ranked;
+    const rankedIds = new Set(ranked.map((p) => p.id));
+    const rest = available.filter((p) => !rankedIds.has(p.id));
+    const pool = q ? available : [...ranked, ...rest];
     const needle = (s: string) => s.toLowerCase().replace(/['’.`]/g, "");
     return pool.filter((p) => {
       if (posFilter !== "ALL" && p.position !== posFilter) return false;
@@ -1692,7 +1694,7 @@ export function DraftApp() {
                   : `${available.length} ON THE BOARD`}
               </p>
               <div className="grid grid-cols-1 gap-2 md:grid-cols-2 2xl:grid-cols-3">
-                {filtered.slice(0, query.trim() ? 80 : 60).map((p) => (
+                {filtered.map((p) => (
                   <div
                     key={p.id}
                     className="fd-pill flex cursor-pointer items-center justify-between gap-2 rounded-2xl px-3 py-3"
