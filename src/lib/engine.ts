@@ -268,7 +268,7 @@ export function rosterImpact(player: Player, team: Player[], overallPick = team.
     score = have === 0 ? Math.max(score, 80) : 64;
   } else if (beatsFlex || upgrade) {
     grade = "HIGH";
-    label = "Locks an elite starter.";
+    label = "Beats a starter / FLEX by 2+ PPG";
     score = Math.max(score, 78);
   } else if (deltaW >= 0.4 && (flex < 1 || have === need)) {
     grade = "SOLID";
@@ -276,7 +276,7 @@ export function rosterImpact(player: Player, team: Player[], overallPick = team.
     score = Math.max(score, 58);
   } else if (oversat || deltaW < 0.15) {
     grade = "SKIP";
-    label = "Roster is saturated at this position.";
+    label = "Position is full; zero weekly lift";
     score = Math.min(score, 22);
   } else {
     grade = "LOW";
@@ -284,14 +284,14 @@ export function rosterImpact(player: Player, team: Player[], overallPick = team.
     score = Math.min(Math.max(score, 24), 40);
   }
 
-  const steal =
-    (grade === "SOLID" || grade === "LOW") &&
-    player.adp > 0 &&
-    overallPick - player.adp >= 12;
-  if (steal) {
-    grade = "STEAL";
-    label = "Too much value to pass up.";
-    score = Math.max(score, 70);
+  const dropped = player.adp > 0 && overallPick - player.adp >= 12;
+  const saturated = skill && have >= need && flex >= 1;
+  if (dropped && grade !== "MUST") {
+    if (grade === "SOLID" || grade === "LOW" || grade === "SKIP" || (grade === "HIGH" && saturated)) {
+      grade = "STEAL";
+      label = "Too much value to pass up.";
+      score = Math.max(score, 70);
+    }
   }
 
   return { score, grade, label };
