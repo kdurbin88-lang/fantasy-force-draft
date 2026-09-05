@@ -261,7 +261,7 @@ function PlayerSheet({
         aria-label="Close player"
         onClick={onClose}
       />
-      <div className="relative z-10 max-h-[92dvh] w-full max-w-xl overflow-y-auto rounded-t-3xl border border-white/10 bg-[#071018] p-5 sm:rounded-3xl sm:p-6">
+      <div className="fd-hero relative z-10 max-h-[92dvh] w-full max-w-xl overflow-y-auto rounded-t-3xl p-5 sm:rounded-3xl sm:p-6">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
@@ -377,19 +377,21 @@ function PowerDial({ power, grade }: { power: number; grade: string }) {
   return (
     <div
       className={cn(
-        "min-w-[108px] rounded-lg border bg-elevated px-3 py-2 text-right",
-        power >= 70 ? "pwr-hot border-go/50" : power < 50 ? "pwr-cold border-danger/50" : "border-accent/40",
+        "grid size-[108px] place-items-center rounded-3xl border bg-black/35",
+        power >= 70 ? "pwr-hot border-go/50" : "pwr-cold border-danger/40",
       )}
     >
-      <div className="font-mono text-[10px] font-bold tracking-[0.22em] text-subtle">PWR</div>
-      <div className="scoreboard-digit text-[42px] font-bold leading-none">{String(power).padStart(2, "0")}</div>
-      <div
-        className={cn(
-          "font-mono text-sm font-bold tracking-[0.18em]",
-          power >= 70 ? "text-go" : power < 50 ? "text-danger" : "text-accent",
-        )}
-      >
-        {grade}
+      <div className="text-center">
+        <div className="font-mono text-[10px] font-bold tracking-[0.28em] text-subtle">PWR</div>
+        <div className="scoreboard-digit text-[44px] font-bold leading-none">{String(power).padStart(2, "0")}</div>
+        <div
+          className={cn(
+            "font-mono text-sm font-bold tracking-[0.18em]",
+            power >= 70 ? "text-go" : "text-danger",
+          )}
+        >
+          {grade}
+        </div>
       </div>
     </div>
   );
@@ -914,7 +916,7 @@ export function DraftApp() {
       <div className="mx-auto max-w-7xl px-3 py-4 pb-24 sm:px-6">
         <div
           className={cn(
-            "mb-4 flex flex-wrap items-center justify-between gap-2 rounded-2xl px-3 py-2",
+            "mb-4 flex flex-wrap items-center justify-between gap-2 rounded-full px-3 py-2",
             beat && now - beat > 8000 ? "border border-red-500/50 bg-red-950/40" : "fd-glass",
           )}
         >
@@ -941,7 +943,7 @@ export function DraftApp() {
               setWatchMode("espn");
               void pullEspn();
             }}
-            className="h-9 shrink-0 rounded-full border border-white/20 px-3 font-mono text-[11px] font-bold"
+            className="h-9 shrink-0 rounded-full fd-ghost px-4 font-mono text-[11px] font-bold"
           >
             REFETCH
           </button>
@@ -970,7 +972,7 @@ export function DraftApp() {
               <p className="font-display text-sm font-bold tracking-[0.32em] text-accent-bright">
                 FANTASY FORCE · ESPN {ESPN_LEAGUE_ID}
               </p>
-              <h1 className="font-display text-5xl font-extrabold leading-none tracking-tight sm:text-6xl">
+              <h1 className="title-glow font-display text-5xl font-extrabold leading-[0.88] tracking-tight sm:text-6xl">
                 DRAFT COMMAND
               </h1>
               <p className="mt-2 max-w-xl text-sm text-muted">
@@ -981,7 +983,7 @@ export function DraftApp() {
                   href={ESPN_LEAGUE_URL}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex h-9 items-center gap-1.5 border border-border bg-elevated px-3 font-mono text-[11px] font-bold"
+                  className="fd-ghost inline-flex h-10 items-center gap-1.5 px-4 font-mono text-[11px] font-bold"
                 >
                   <Link2 className="size-3.5" />
                   League office
@@ -990,7 +992,7 @@ export function DraftApp() {
                   href={ESPN_DRAFT_URL}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex h-9 items-center gap-1.5 border border-border bg-elevated px-3 font-mono text-[11px] font-bold"
+                  className="fd-ghost inline-flex h-10 items-center gap-1.5 px-4 font-mono text-[11px] font-bold"
                 >
                   <Trophy className="size-3.5" />
                   Draft room
@@ -1006,7 +1008,7 @@ export function DraftApp() {
                       playCue("click");
                     }
                   }}
-                  className="inline-flex h-9 items-center gap-1.5 border border-border bg-elevated px-3 font-mono text-[11px] font-bold"
+                  className="fd-ghost inline-flex h-10 items-center gap-1.5 px-4 font-mono text-[11px] font-bold"
                 >
                   {muted ? <VolumeX className="size-3.5" /> : <Volume2 className="size-3.5" />}
                   {muted ? "Muted" : "Sound on"}
@@ -1037,7 +1039,7 @@ export function DraftApp() {
 
         <div className="mb-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto_auto]">
           <form
-            className="fd-glass flex flex-col gap-2 rounded-2xl p-2 sm:flex-row sm:items-center sm:p-2"
+            className="fd-glass flex flex-col gap-2 rounded-[28px] p-3"
             onSubmit={(e) => {
               e.preventDefault();
               takeTyped(false);
@@ -1049,16 +1051,16 @@ export function DraftApp() {
               placeholder="Last name just went — Enter"
               className="h-12 flex-1 rounded-xl bg-transparent px-4 text-sm text-fg placeholder:text-subtle outline-none"
             />
-            <button type="submit" className="fd-btn h-12 rounded-xl px-5 text-sm font-bold">
+            <button type="submit" className="fd-btn h-14 w-full text-sm font-bold">
               <span className="inline-flex items-center gap-2">
                 <X className="size-4" />
-                Mark taken
+                MARK TAKEN
               </span>
             </button>
             <button
               type="button"
               onClick={() => takeTyped(true)}
-              className="h-12 rounded-xl border border-white/20 px-4 text-sm font-bold"
+              className="go-btn h-14 w-full text-sm font-bold"
             >
               <span className="inline-flex items-center gap-2">
                 <Check className="size-4" />
@@ -1068,7 +1070,7 @@ export function DraftApp() {
             <button
               type="button"
               onClick={runUndo}
-              className="h-12 rounded-xl border border-white/20 px-4 text-sm font-bold"
+              className="go-btn h-14 w-full text-sm font-bold"
             >
               <span className="inline-flex items-center gap-2">
                 <Undo2 className="size-4" />
