@@ -8,6 +8,7 @@ import {
   rankBoard,
   shieldIntegrity,
   simulateEspnWindow,
+  extractEspnPickLines,
 } from "./engine";
 import { describeHumanThreat, warRoomCard } from "./warRoom";
 import { reconcileQueue, withLiveRanks } from "./store";
@@ -116,5 +117,24 @@ describe("Round 1 never recommends Rashee Rice", () => {
         `${name} missing from top 5: ${rows.slice(0, 5).map((r) => r.player.name).join(", ")}`,
       );
     }
+  });
+
+  it("zero-state board still has Jefferson, CMC, and Lamb available", () => {
+    const available = PLAYERS_2026.filter(() => true);
+    for (const name of ["Justin Jefferson", "Christian McCaffrey", "CeeDee Lamb"]) {
+      assert.ok(available.some((p) => p.name === name), `${name} missing from library`);
+    }
+    const rows = rankBoard(available, [], 0, { slot: 4, teams: 12, draftedIds: [], humanSlots: [] });
+    const names = rows.slice(0, 12).map((r) => r.player.name);
+    assert.ok(!names.includes("Rashee Rice"), `Rice leaked into R1 board: ${names.join(", ")}`);
+    const rice = rows.find((r) => r.player.name === "Rashee Rice");
+    if (rice) assert.ok(rice.score < 0, `Rice score ${rice.score} should be circuit-broken`);
+  });
+
+  it("slash OCR takes Jefferson only on full name, never last-name fragments", () => {
+    const miss = extractEspnPickLines("Jefferson is still available", PLAYERS_2026);
+    assert.equal(miss.length, 0);
+    const hit = extractEspnPickLines("Justin Jefferson / MIN WR", PLAYERS_2026);
+    assert.equal(hit[0]?.name, "Justin Jefferson");
   });
 });

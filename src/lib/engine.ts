@@ -816,7 +816,11 @@ export function rankBoard(available: Player[], team: Player[], untilMine = 0, ct
       score *= zeroRbHatch(player, team);
       const pickNum = livePickCount(draftedIds, ctx.keeperSeats) + 1;
       const reach = player.adp - pickNum;
-      if (pickNum <= 12 && player.adp > 16) score *= 0.08;
+      const espn = player.espnRank ?? player.rank;
+      const round = Math.floor((pickNum - 1) / teams) + 1;
+      if (round === 1 && espn > 24) score = -9999;
+      else if (round === 2 && espn > 48) score = -9999;
+      else if (pickNum <= 12 && player.adp > 16) score *= 0.08;
       else if (pickNum <= 24 && player.adp > 36) score *= 0.15;
       else if (reach > 18) score *= 0.25;
       else if (reach > 12) score *= 0.45;
@@ -1089,8 +1093,7 @@ export function extractEspnPickLines(raw: string, players: Player[]): Player[] {
   let m: RegExpExecArray | null;
   while ((m = re.exec(hay))) {
     const name = m[1].replace(/\s+/g, " ").trim();
-    const hit =
-      players.find((p) => norm(p.name) === norm(name)) || extractFromText(name, players)[0];
+    const hit = players.find((p) => norm(p.name) === norm(name));
     if (hit && !seen.has(hit.id)) {
       seen.add(hit.id);
       hits.push(hit);
@@ -1117,7 +1120,11 @@ export function extractRosterAbbrevs(raw: string, players: Player[]): Player[] {
   while ((m = re.exec(raw))) {
     const last = lastNameKey(m[1]);
     const matches = players.filter((p) => lastNameKey(p.name) === last);
-    if (matches.length === 1 && !seen.has(matches[0].id)) {
+    if (
+      matches.length === 1 &&
+      (matches[0].espnRank ?? matches[0].rank) > 15 &&
+      !seen.has(matches[0].id)
+    ) {
       seen.add(matches[0].id);
       hits.push(matches[0]);
     }
@@ -1129,6 +1136,7 @@ export function extractUniqueLastNames(raw: string, players: Player[]): Player[]
   const hay = ` ${norm(raw)} `;
   const groups = new Map<string, Player[]>();
   for (const p of players) {
+    if ((p.espnRank ?? p.rank) <= 15) continue;
     const key = lastNameKey(p.name);
     if (key.length < 5) continue;
     const g = groups.get(key) ?? [];

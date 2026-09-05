@@ -853,12 +853,15 @@ export function DraftApp() {
       if (!quiet) setWatchNote(`ESPN queue locked · ${parsed.queue.length} ranks`);
     }
     const catchup = extractEspnCatchup(text, PLAYERS_2026);
+    const fuzzy = extractFromText(text, PLAYERS_2026).filter(
+      (p) => (p.espnRank ?? p.rank) > 15,
+    );
     const hits =
-      catchup.length >= 2
+      catchup.length >= 1
         ? catchup
         : parsed.taken.length || parsed.queue.length
           ? parsed.taken
-          : extractFromText(text, PLAYERS_2026);
+          : fuzzy;
     const drafted = useDraft.getState().draftedIds;
     const fresh = hits.filter((p) => !drafted.includes(p.id));
     if (live && catchup.length < 2 && fresh.length > 5) {
