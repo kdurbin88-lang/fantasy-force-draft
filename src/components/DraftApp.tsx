@@ -57,6 +57,7 @@ import { SetupBoot } from "@/components/SetupBoot";
 import { injuryFactor, sosPlayoff } from "@/lib/outlook";
 import { synergyTags, vona, handcuffFor } from "@/lib/synergy";
 import { parseDump, warRoomCard, matchInOrder } from "@/lib/warRoom";
+import { buildRecap } from "@/lib/recap";
 import { cn } from "@/lib/utils";
 import { playCue, setMuted, startBed, stopBed, warmupAudio } from "@/lib/sounds";
 
@@ -458,6 +459,138 @@ function TierTrack({ label, count, kind }: { label: string; count: number; kind:
   );
 }
 
+function RecapSheet({
+  team,
+  available,
+  onClose,
+}: {
+  team: Player[];
+  available: Player[];
+  onClose: () => void;
+}) {
+  const r = buildRecap(team, available);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+  return (
+    <div className="fixed inset-0 z-[80] flex items-end justify-center sm:items-center">
+      <button type="button" className="absolute inset-0 bg-black/70" aria-label="Close recap" onClick={onClose} />
+      <div className="fd-hero relative z-10 max-h-[92dvh] w-full max-w-2xl overflow-y-auto rounded-t-3xl p-5 sm:rounded-3xl sm:p-6">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <div className="font-mono text-[10px] font-bold tracking-[0.28em] text-accent-bright">POST-DRAFT RECAP</div>
+            <h2 className="title-glow mt-1 font-display text-4xl font-extrabold leading-none">{r.title}</h2>
+            <p className="mt-2 text-sm text-muted">
+              Grade {r.grade} · PWR {String(r.power).padStart(2, "0")} · {r.weeklyPpg.toFixed(1)} PPG · {r.seasonPts} PPR
+            </p>
+          </div>
+          <button type="button" onClick={onClose} className="grid size-10 place-items-center rounded-full fd-ghost">
+            <X className="size-4" />
+          </button>
+        </div>
+
+        <div className="mt-4 grid grid-cols-3 gap-2 font-mono text-[11px]">
+          <div className="fd-glass px-3 py-3">
+            <div className="text-subtle">FLOOR</div>
+            <div className="text-xl font-bold">{r.floorPpg.toFixed(1)}</div>
+          </div>
+          <div className="fd-glass px-3 py-3">
+            <div className="text-subtle">CEIL</div>
+            <div className="text-xl font-bold">{r.ceilPpg.toFixed(1)}</div>
+          </div>
+          <div className="fd-glass px-3 py-3">
+            <div className="text-subtle">W15–17</div>
+            <div className="text-xl font-bold">{r.playoffMult.toFixed(2)}x</div>
+          </div>
+        </div>
+
+        <p className="mt-4 text-sm font-semibold leading-relaxed">{r.verdict}</p>
+        <p className="mt-2 text-sm text-muted">{r.path}</p>
+
+        <div className="mt-5 space-y-2">
+          {r.rooms.map((room) => (
+            <div key={room.pos} className="fd-pill px-3 py-3">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-mono text-[10px] font-bold tracking-widest text-accent-bright">{room.pos}</span>
+                <span className="font-mono text-[11px]">{room.ppg.toFixed(1)} PPG</span>
+              </div>
+              <p className="mt-1 text-sm font-bold">{room.names}</p>
+              <p className="text-xs text-muted">{room.note}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-5 grid gap-3 sm:grid-cols-2">
+          <div className="fd-glass p-4">
+            <div className="font-mono text-[10px] font-bold tracking-widest text-accent-bright">WHY YOU WIN</div>
+            <ul className="mt-2 space-y-2 text-sm">
+              {r.strengths.map((s) => (
+                <li key={s}>{s}</li>
+              ))}
+            </ul>
+          </div>
+          <div className="fd-glass p-4">
+            <div className="font-mono text-[10px] font-bold tracking-widest text-danger">HOW YOU LOSE</div>
+            <ul className="mt-2 space-y-2 text-sm">
+              {r.risks.map((s) => (
+                <li key={s}>{s}</li>
+              ))}
+            </ul>
+          </div>
+        </div>
+
+        {r.byes.length > 0 && (
+          <div className="mt-4 fd-glass p-4">
+            <div className="font-mono text-[10px] font-bold tracking-widest text-accent-bright">BYE LANDMINES</div>
+            <ul className="mt-2 space-y-1 text-sm">
+              {r.byes.map((b) => (
+                <li key={b.week} className={b.hit ? "text-danger" : "text-muted"}>
+                  W{b.week} · {b.names}
+                  {b.hit ? " · CRISIS" : ""}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {(r.stacks.length > 0 || r.cuffs.length > 0) && (
+          <div className="mt-4 fd-glass p-4 text-sm">
+            {r.stacks.length > 0 && (
+              <>
+                <div className="font-mono text-[10px] font-bold tracking-widest text-accent-bright">STACKS</div>
+                <p className="mt-1">{r.stacks.join(" · ")}</p>
+              </>
+            )}
+            {r.cuffs.length > 0 && (
+              <>
+                <div className="mt-3 font-mono text-[10px] font-bold tracking-widest text-accent-bright">HANDCUFFS</div>
+                <p className="mt-1">{r.cuffs.join(" · ")}</p>
+              </>
+            )}
+          </div>
+        )}
+
+        {r.waivers.length > 0 && (
+          <div className="mt-4 fd-glass p-4">
+            <div className="font-mono text-[10px] font-bold tracking-widest text-accent-bright">FIRST WAIVER STRIKES</div>
+            <ul className="mt-2 space-y-1 text-sm">
+              {r.waivers.map((p) => (
+                <li key={p.id}>
+                  {p.name} · {p.position} · {p.proj.toFixed(0)} PPR
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function DraftApp() {
   const draftedIds = useDraft((s) => s.draftedIds);
   const myIds = useDraft((s) => s.myIds);
@@ -498,6 +631,8 @@ export function DraftApp() {
   const [beat, setBeat] = useState(0);
   const [now, setNow] = useState(() => Date.now());
   const [selected, setSelected] = useState<Player | null>(null);
+  const [showRecap, setShowRecap] = useState(false);
+  const recapFired = useRef(false);
   const dropRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -925,6 +1060,13 @@ export function DraftApp() {
   }, []);
 
   useEffect(() => {
+    if (myTeam.length >= 14 && !recapFired.current) {
+      recapFired.current = true;
+      setShowRecap(true);
+    }
+  }, [myTeam.length]);
+
+  useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z") {
         e.preventDefault();
@@ -1057,6 +1199,16 @@ export function DraftApp() {
                   {muted ? <VolumeX className="size-3.5" /> : <Volume2 className="size-3.5" />}
                   {muted ? "Muted" : "Sound on"}
                 </button>
+                {myTeam.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowRecap(true)}
+                    className="fd-btn inline-flex h-10 items-center gap-1.5 px-4 font-mono text-[11px] font-bold"
+                  >
+                    <Trophy className="size-3.5" />
+                    Recap
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -1726,6 +1878,9 @@ export function DraftApp() {
             setSelected(null);
           }}
         />
+      )}
+      {showRecap && myTeam.length > 0 && (
+        <RecapSheet team={myTeam} available={available} onClose={() => setShowRecap(false)} />
       )}
     </main>
   );

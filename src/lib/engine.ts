@@ -125,7 +125,7 @@ function floorMult(player: Player): number {
   return 0.92 + 0.08 * stable;
 }
 
-function starterLineup(team: Player[]): Player[] {
+export function starterLineup(team: Player[]): Player[] {
   const by = (pos: Position) =>
     team.filter((p) => p.position === pos).sort((a, b) => b.proj - a.proj);
   const qb = by("QB").slice(0, 1);
