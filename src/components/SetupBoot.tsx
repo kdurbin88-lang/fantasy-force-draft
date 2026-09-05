@@ -35,8 +35,8 @@ export function SetupBoot() {
           Lock the room before the engine talks.
         </h1>
         <p className="text-sm text-muted">
-          1. Click your seat (turns blue — YOU). 2. Click other humans (red). 3. Hit LOCK ROOM.
-          It will not continue until you press that button.
+          1. Click your seat (blue — YOU). 2. Click other humans (red). 3. Press LOCK ROOM.
+          This screen stays until that button. Picks already on the board are kept.
         </p>
 
         <div className="fd-glass flex items-center justify-between rounded-2xl px-4 py-3">

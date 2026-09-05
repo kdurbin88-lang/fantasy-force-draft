@@ -156,15 +156,11 @@ export const useDraft = create<DraftState>()(
     }),
     {
       name: "fantasy-force-draft",
-      version: 2,
+      version: 3,
       skipHydration: false,
       migrate: (persisted) => {
         const p = persisted as DraftState;
-        const drafted = Array.isArray(p.draftedIds) ? p.draftedIds : [];
-        return {
-          ...p,
-          configured: Boolean(p.configured && drafted.length > 0),
-        };
+        return { ...p, configured: false };
       },
       partialize: (s) => ({
         draftedIds: s.draftedIds,
@@ -176,7 +172,6 @@ export const useDraft = create<DraftState>()(
         humanSlots: s.humanSlots,
         queueIds: s.queueIds,
         keeperSeats: s.keeperSeats,
-        configured: s.configured && s.draftedIds.length > 0,
       }),
     },
   ),

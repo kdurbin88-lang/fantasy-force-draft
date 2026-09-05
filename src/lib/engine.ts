@@ -497,10 +497,17 @@ function zeroRbHatch(player: Player, team: Player[]): number {
 
 /** First 4 roster picks are WR. No committee RBs, QBs, or kickers. */
 function wrFirstFour(player: Player, team: Player[]): number {
-  if (team.length >= 4) return 1;
-  if (player.position === "WR") return 1.55;
-  if (player.position === "TE" && (player.espnRank ?? player.rank) <= 10) return 0.7;
-  return 0.05;
+  const c = counts(team);
+  if (team.length < 4) {
+    if (player.position === "WR") return 1.55;
+    if (player.position === "TE" && (player.espnRank ?? player.rank) <= 10) return 0.7;
+    return 0.05;
+  }
+  if (c.RB >= 2 && c.WR < 3) {
+    if (player.position === "WR") return 1.4;
+    if (player.position === "RB") return 0.08;
+  }
+  return 1;
 }
 
 function heatMult(need: boolean, heat: number, onClock: boolean): number {
