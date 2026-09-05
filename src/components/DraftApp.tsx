@@ -44,6 +44,8 @@ import {
   rosterImpact,
   extractEspnPickLines,
   extractRosterAbbrevs,
+  extractEspnCatchup,
+  extractUniqueLastNames,
   type ImpactGrade,
 } from "@/lib/engine";
 import { resolveTeam, useDraft, withLiveRanks } from "@/lib/store";
@@ -841,20 +843,28 @@ export function DraftApp() {
   }
 
   function runIngest(text: string, quiet = false, live = false) {
+    const fromUrl = extractEspnLeagueId(text);
+    if (fromUrl && fromUrl !== leagueId) {
+      setLeagueId(fromUrl);
+      void pullEspn();
+    }
     const parsed = parseDump(text, PLAYERS_2026);
     if (parsed.queue.length) {
       setQueue(parsed.queue.map((p) => p.id));
       if (!quiet) setWatchNote(`ESPN queue locked · ${parsed.queue.length} ranks`);
     }
+    const catchup = extractEspnCatchup(text, PLAYERS_2026);
     const hits =
-      parsed.taken.length || parsed.queue.length
-        ? parsed.taken
-        : extractFromText(text, PLAYERS_2026);
+      catchup.length >= 2
+        ? catchup
+        : parsed.taken.length || parsed.queue.length
+          ? parsed.taken
+          : extractFromText(text, PLAYERS_2026);
     const drafted = useDraft.getState().draftedIds;
     const fresh = hits.filter((p) => !drafted.includes(p.id));
-    if (live && fresh.length > 5) {
+    if (live && catchup.length < 2 && fresh.length > 5) {
       if (!quiet) {
-        setWatchNote("Ignored the player list — only real picks get locked");
+        setWatchNote("Ignored the player list — paste Pick History, not the available board");
       }
       return 0;
     }
@@ -910,7 +920,8 @@ export function DraftApp() {
     const canvas = canvasRef.current;
     grabFrame(video, canvas);
     const hash = canvasHash(canvas);
-    if (hash === lastHash.current) {
+    const empty = lastScreenIds.current.size === 0;
+    if (hash === lastHash.current && !empty) {
       setWatchNote("Watching ESPN · board unchanged");
       return;
     }
@@ -924,10 +935,15 @@ export function DraftApp() {
         ocrSource(left),
         ocrSource(canvas),
       ]);
-      if (watchModeRef.current !== "screen") return;
-      const history = extractEspnPickLines(`${rightText}\n${fullText}`, PLAYERS_2026);
+      if (watchModeRef.current !== "screen" && watchModeRef.current !== "auto") return;
+      const history = extractEspnCatchup(`${rightText}\n${fullText}`, PLAYERS_2026);
+      const rail = extractUniqueLastNames(rightText, PLAYERS_2026);
+      const merged = [...history];
+      for (const p of rail) {
+        if (!merged.some((x) => x.id === p.id)) merged.push(p);
+      }
       const rosterHits = extractRosterAbbrevs(leftText, PLAYERS_2026);
-      const n = history.length ? ingest(history) : 0;
+      const n = merged.length ? ingest(merged) : 0;
       if (rosterHits.length) {
         for (const p of rosterHits) {
           if (!useDraft.getState().myIds.includes(p.id)) {
@@ -942,7 +958,7 @@ export function DraftApp() {
           }
         }
       }
-      lastScreenIds.current = new Set(history.map((p) => p.id));
+      lastScreenIds.current = new Set(merged.map((p) => p.id));
       if (n || rosterHits.length) {
         playCue("ingest");
         setBeat(Date.now());
@@ -951,46 +967,57 @@ export function DraftApp() {
         );
       }
       setWatchNote(
-        history.length
-          ? `Watching ESPN · ${history.length} names on Pick History`
-          : "Watching ESPN · no pick-history names yet — keep the Picks rail visible",
+        merged.length
+          ? `Watching ESPN · ${merged.length} names on Pick History`
+          : "Watching ESPN · no names yet — paste Pick History below as fallback",
       );
     } catch {
       setWatchNote("Watching ESPN · scan hiccup, retrying");
     }
   }
 
-  async function startScreenWatch() {
+  async function attachScreen() {
     if (!navigator.mediaDevices?.getDisplayMedia) {
-      setIngestMsg(
-        "This phone browser cannot share a window. Open the app on the computer running ESPN, or use clipboard watch.",
-      );
-      return;
+      setIngestMsg("This browser cannot share a window. Paste Pick History or use last-name bar.");
+      return false;
     }
     try {
       const stream = await navigator.mediaDevices.getDisplayMedia({
         video: { frameRate: 4 },
         audio: false,
       });
+      streamRef.current?.getTracks().forEach((t) => t.stop());
       streamRef.current = stream;
-      stream.getVideoTracks()[0]?.addEventListener("ended", () => stopWatch());
+      stream.getVideoTracks()[0]?.addEventListener("ended", () => {
+        streamRef.current = null;
+        setWatchNote("Window share ended — ESPN API + clipboard still armed");
+      });
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         await videoRef.current.play();
       }
       lastHash.current = 0;
       lastScreenIds.current = new Set();
-      setWatchMode("screen");
-      setWatchNote("Watching ESPN · share the draft window and leave it up");
-      setIngestMsg("Live watch on. New names on that window mark themselves taken.");
+      return true;
     } catch {
-      setIngestMsg("Screen share cancelled. Need the ESPN draft window shared once.");
+      return false;
     }
+  }
+
+  async function startScreenWatch() {
+    const ok = await attachScreen();
+    if (!ok) {
+      setIngestMsg("Screen share cancelled. Paste Pick History or type last names — still works.");
+      return;
+    }
+    setWatchMode("screen");
+    setWatchNote("Watching ESPN · leave the Picks rail visible");
+    setIngestMsg("Live watch on. If names miss, paste Pick History below.");
   }
 
   async function startClipboardWatch() {
     if (!navigator.clipboard?.readText) {
-      setIngestMsg("Clipboard watch is blocked here. Use Watch ESPN on desktop.");
+      setIngestMsg("Clipboard watch is blocked here. Paste Pick History into the box.");
       return;
     }
     try {
@@ -1003,11 +1030,16 @@ export function DraftApp() {
     setIngestMsg("Copy the pick list or a name — it will ingest without pasting.");
   }
 
-  function startArmWatch() {
+  async function startArmWatch() {
     setWatchMode("auto");
-    setWatchNote("Armed · waiting for Edge sniffer or clipboard");
-    setIngestMsg("Run espn-sniffer.py. Picks mark themselves.");
+    setWatchNote("All pipes armed · API + window + clipboard + sniffer");
+    setIngestMsg("Share the ESPN draft tab if asked. Paste Pick History if a pipe misses.");
+    setBeat(Date.now());
+    void pullEspn();
     void pullSniff();
+    const shared = await attachScreen();
+    if (shared) setWatchNote("All pipes armed · window live");
+    else setWatchNote("API + clipboard armed · paste Pick History if ESPN is private");
   }
 
   function startSim() {
@@ -1025,8 +1057,10 @@ export function DraftApp() {
         },
       });
       if (!result.ok) {
-        setWatchNote(result.message);
-        setIngestMsg(result.message);
+        if (watchModeRef.current !== "auto") {
+          setWatchNote(result.message);
+          setIngestMsg(result.message);
+        }
         if (result.private) setShowUnlock(true);
         return;
       }
@@ -1089,10 +1123,10 @@ export function DraftApp() {
   }
 
   useEffect(() => {
-    if (watchMode !== "screen") return;
+    if (watchMode !== "screen" && watchMode !== "auto") return;
     const id = window.setInterval(() => {
       void scanScreenFrame();
-    }, 2800);
+    }, 2500);
     void scanScreenFrame();
     return () => window.clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1140,7 +1174,7 @@ export function DraftApp() {
   }, [watchMode]);
 
   useEffect(() => {
-    if (watchMode !== "espn") return;
+    if (watchMode !== "espn" && watchMode !== "auto") return;
     const id = window.setInterval(() => {
       void pullEspn();
     }, 3000);
@@ -1791,7 +1825,15 @@ export function DraftApp() {
               />
               <p className="mt-2 font-mono text-[10px] text-subtle">
                 Watching {leagueId || ESPN_LEAGUE_ID}
+                {watchMode !== "off"
+                  ? ` · ${watchMode.toUpperCase()} · last tick ${beat ? `${Math.max(0, Math.round((now - beat) / 1000))}s ago` : "—"}`
+                  : ""}
               </p>
+              {watchMode !== "off" && watchMode !== "sim" && draftedIds.length < 2 && beat > 0 && now - beat > 12000 && (
+                <div className="mt-3 rounded-2xl border border-red-400/50 bg-red-500/20 p-3 text-xs font-semibold leading-relaxed text-fg">
+                  Reader missed. In ESPN click <span className="text-accent-bright">Pick History</span>, copy the list, paste in the box below. Or type a last name at the top. Undo is always there.
+                </div>
+              )}
               <p className="mt-2 text-[10px] tracking-wide text-white/40">
                 Broadcast bumpers — Kevin MacLeod / incompetech
               </p>
@@ -1804,7 +1846,7 @@ export function DraftApp() {
                   className="fd-btn inline-flex h-12 items-center justify-center gap-2 rounded-2xl px-4 text-sm font-extrabold"
                 >
                   <Radar className="size-4" />
-                  {watchMode === "auto" ? "DISARM" : "ARM ESPN"}
+                  {watchMode === "auto" ? "DISARM ALL" : "LOCK ALL PIPES"}
                 </button>
                 <button
                   type="button"
@@ -1905,7 +1947,7 @@ export function DraftApp() {
               <textarea
                 value={raw}
                 onChange={(e) => setRaw(e.target.value)}
-                placeholder="Manual backup — paste recap if watch is off"
+                placeholder="FALLBACK — paste ESPN Pick History here (copy the Picks list)"
                 className="mt-3 h-20 w-full resize-none rounded-2xl border border-white/10 bg-black/20 p-3 text-sm placeholder:text-subtle outline-none"
               />
               <div className="mt-3 flex flex-wrap gap-2">

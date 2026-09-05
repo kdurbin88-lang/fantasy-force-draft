@@ -1077,17 +1077,22 @@ export function extractFromText(raw: string, players: Player[]): Player[] {
 export function extractEspnPickLines(raw: string, players: Player[]): Player[] {
   const hits: Player[] = [];
   const seen = new Set<string>();
-  const re =
-    /([A-Z][A-Za-z.''-]+(?:\s+[A-Z][A-Za-z.''-]+){1,3})\s*\/\s*[A-Z]{2,3}\s+(?:QB|RB|WR|TE|K|D\/?ST)/g;
+  const patterns = [
+    /([A-Z][A-Za-z.''-]+(?:\s+[A-Z][A-Za-z.''-]+){1,3})\s*[\/|]\s*[A-Z]{2,3}\s+(?:QB|RB|WR|TE|K|D\/?ST)/g,
+    /([A-Z][A-Za-z.''-]+(?:\s+[A-Z][A-Za-z.''-]+){1,3})\s+[A-Z]{2,3}\s+(?:QB|RB|WR|TE|K|D\/?ST)/g,
+  ];
   const hay = raw.replace(/\s+/g, " ");
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(hay))) {
-    const name = m[1].replace(/\s+/g, " ").trim();
-    const hit =
-      players.find((p) => norm(p.name) === norm(name)) || extractFromText(name, players)[0];
-    if (hit && !seen.has(hit.id)) {
-      seen.add(hit.id);
-      hits.push(hit);
+  for (const re of patterns) {
+    re.lastIndex = 0;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(hay))) {
+      const name = m[1].replace(/\s+/g, " ").trim();
+      const hit =
+        players.find((p) => norm(p.name) === norm(name)) || extractFromText(name, players)[0];
+      if (hit && !seen.has(hit.id)) {
+        seen.add(hit.id);
+        hits.push(hit);
+      }
     }
   }
   return hits;
@@ -1106,7 +1111,7 @@ function lastNameKey(name: string) {
 export function extractRosterAbbrevs(raw: string, players: Player[]): Player[] {
   const hits: Player[] = [];
   const seen = new Set<string>();
-  const re = /\b[A-Z]\.\s*([A-Z][A-Za-z''-]{3,})(?:\s+(?:III|II|Jr\.?))?/g;
+  const re = /\b[A-Z]\.\s*([A-Za-z''-]{3,})(?:\s+(?:III|II|Jr\.?))?/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(raw))) {
     const last = lastNameKey(m[1]);
@@ -1117,6 +1122,40 @@ export function extractRosterAbbrevs(raw: string, players: Player[]): Player[] {
     }
   }
   return hits;
+}
+
+export function extractUniqueLastNames(raw: string, players: Player[]): Player[] {
+  const hay = ` ${norm(raw)} `;
+  const groups = new Map<string, Player[]>();
+  for (const p of players) {
+    const key = lastNameKey(p.name);
+    if (key.length < 5) continue;
+    const g = groups.get(key) ?? [];
+    g.push(p);
+    groups.set(key, g);
+  }
+  const hits: Player[] = [];
+  for (const [last, group] of groups) {
+    if (group.length === 1 && hay.includes(` ${last} `)) hits.push(group[0]);
+  }
+  return hits;
+}
+
+export function extractEspnCatchup(raw: string, players: Player[]): Player[] {
+  const seen = new Set<string>();
+  const out: Player[] = [];
+  const add = (list: Player[]) => {
+    for (const p of list) {
+      if (!seen.has(p.id)) {
+        seen.add(p.id);
+        out.push(p);
+      }
+    }
+  };
+  add(extractEspnPickLines(raw, players));
+  add(extractRosterAbbrevs(raw, players));
+  if (out.length < 3) add(extractUniqueLastNames(raw, players));
+  return out;
 }
 
 export function snakeOwner(overall: number, slot: number, teams = TEAMS) {
