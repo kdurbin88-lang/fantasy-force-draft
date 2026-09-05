@@ -6,8 +6,6 @@ import {
   RotateCcw,
   Check,
   X,
-  MonitorUp,
-  ClipboardCopy,
   Square,
   Link2,
   Zap,
@@ -29,7 +27,6 @@ import { LAST_YEAR, outlookFor, projLine, type YearLine } from "@/lib/lastYear";
 import {
   badgesFor,
   calculatePower,
-  DEMO_ESPN,
   extractFromText,
   gradeFor,
   needSlots,
@@ -1808,8 +1805,7 @@ export function DraftApp() {
                 LIVE BOARD
               </div>
               <p className="text-xs leading-relaxed text-muted">
-                Practice drafts get a <span className="text-fg">new ESPN league ID</span>.
-                Copy the URL from the ESPN draft tab and paste it below, then hit SYNC.
+                One button arms ESPN, window share, and clipboard. If that misses, paste Pick History. Last name at the top is the 2-second backup.
               </p>
               <input
                 value={leagueId}
@@ -1825,83 +1821,33 @@ export function DraftApp() {
                     setLeagueId(id);
                   }
                 }}
-                placeholder="Paste ESPN draft URL or leagueId"
+                placeholder="Paste ESPN draft URL"
                 className="mt-3 h-11 w-full rounded-xl border border-white/15 bg-black/25 px-3 text-sm outline-none"
               />
               <p className="mt-2 font-mono text-[10px] text-subtle">
-                Watching {leagueId || ESPN_LEAGUE_ID}
+                {leagueId || ESPN_LEAGUE_ID}
                 {watchMode !== "off"
                   ? ` · ${watchMode.toUpperCase()} · last tick ${beat ? `${Math.max(0, Math.round((now - beat) / 1000))}s ago` : "—"}`
                   : ""}
               </p>
               {watchMode !== "off" && watchMode !== "sim" && draftedIds.length < 2 && beat > 0 && now - beat > 12000 && (
                 <div className="mt-3 rounded-2xl border border-red-400/50 bg-red-500/20 p-3 text-xs font-semibold leading-relaxed text-fg">
-                  Reader missed. In ESPN click <span className="text-accent-bright">Pick History</span>, copy the list, paste in the box below. Or type a last name at the top. Undo is always there.
+                  Reader missed. ESPN → Pick History → copy → paste below. Or type a last name.
                 </div>
               )}
-              <p className="mt-2 text-[10px] tracking-wide text-white/40">
-                Broadcast bumpers — Kevin MacLeod / incompetech
-              </p>
               <div className="mt-4 grid grid-cols-1 gap-2">
                 <button
                   type="button"
                   onClick={() =>
-                    watchMode === "auto" ? stopWatch() : startArmWatch()
+                    watchMode === "auto" || watchMode === "screen" || watchMode === "espn" || watchMode === "clip"
+                      ? stopWatch()
+                      : startArmWatch()
                   }
                   className="fd-btn inline-flex h-12 items-center justify-center gap-2 rounded-2xl px-4 text-sm font-extrabold"
                 >
                   <Radar className="size-4" />
-                  {watchMode === "auto" ? "DISARM ALL" : "LOCK ALL PIPES"}
+                  {watchMode === "off" || watchMode === "sim" ? "LOCK ESPN" : "DISARM"}
                 </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    watchMode === "espn" ? stopWatch() : startEspnWatch()
-                  }
-                  className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-white/20 bg-white/5 px-4 text-sm font-extrabold"
-                >
-                  <Radar className="size-4" />
-                  {watchMode === "espn" ? "STOP ESPN SYNC" : "SYNC ESPN LEAGUE"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    watchMode === "sniff" ? stopWatch() : startSniffWatch()
-                  }
-                  className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-white/20 bg-white/5 px-4 text-sm font-extrabold"
-                >
-                  <Radar className="size-4" />
-                  {watchMode === "sniff" ? "STOP EDGE SNIFFER" : "LISTEN TO EDGE"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    watchMode === "screen" ? stopWatch() : startScreenWatch()
-                  }
-                  className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-white/20 bg-white/5 px-4 text-sm font-extrabold"
-                >
-                  <MonitorUp className="size-4" />
-                  {watchMode === "screen" ? "STOP WINDOW" : "WATCH ESPN WINDOW"}
-                </button>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      watchMode === "clip" ? stopWatch() : startClipboardWatch()
-                    }
-                    className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-white/15 px-3 text-xs font-bold"
-                  >
-                    <ClipboardCopy className="size-4" />
-                    {watchMode === "clip" ? "Stop clip" : "Clipboard"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => (watchMode === "sim" ? stopWatch() : startSim())}
-                    className="h-11 rounded-2xl border border-white/15 px-3 text-xs font-bold"
-                  >
-                    {watchMode === "sim" ? "Stop sim" : "Simulate live"}
-                  </button>
-                </div>
               </div>
               {showUnlock && (
                 <div className="mt-3 space-y-2 rounded-2xl border border-white/10 bg-black/20 p-3">
@@ -1935,24 +1881,11 @@ export function DraftApp() {
                   </button>
                 </div>
               )}
-              <div className="mt-3 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => void refreshRanks()}
-                  className="h-10 rounded-full border border-white/15 px-4 text-xs font-bold"
-                >
-                  Refresh ESPN ranks
-                </button>
-                {rankNote ? <span className="text-xs text-muted">{rankNote}</span> : null}
-                {queueIds.length ? (
-                  <span className="text-xs text-muted">Queue {queueIds.length}</span>
-                ) : null}
-              </div>
               <video ref={videoRef} className="hidden" muted playsInline />
               <textarea
                 value={raw}
                 onChange={(e) => setRaw(e.target.value)}
-                placeholder="FALLBACK — paste ESPN Pick History here (copy the Picks list)"
+                placeholder="FALLBACK — paste ESPN Pick History"
                 className="mt-3 h-20 w-full resize-none rounded-2xl border border-white/10 bg-black/20 p-3 text-sm placeholder:text-subtle outline-none"
               />
               <div className="mt-3 flex flex-wrap gap-2">
@@ -1970,16 +1903,6 @@ export function DraftApp() {
                 >
                   <Upload className="size-4" />
                   {ocrBusy ? "Reading…" : "Screenshot"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setRaw(DEMO_ESPN);
-                    runIngest(DEMO_ESPN);
-                  }}
-                  className="h-10 rounded-full border border-white/15 px-4 text-xs font-bold"
-                >
-                  Demo board
                 </button>
               </div>
               <input
