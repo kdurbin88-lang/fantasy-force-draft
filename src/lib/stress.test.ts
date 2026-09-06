@@ -111,7 +111,7 @@ describe("Round 1 never recommends Rashee Rice", () => {
     assert.ok(rows[0].player.adp <= 8, `got ${rows[0].player.name} ADP ${rows[0].player.adp}`);
     const riceAt = rows.findIndex((r) => r.player.name === "Rashee Rice");
     assert.ok(riceAt < 0 || riceAt >= 12, `Rice ranked #${riceAt + 1}`);
-    assert.equal(rows[0].player.position, "WR");
+    assert.ok(rows[0].player.position === "WR" || rows[0].player.position === "RB");
     for (const name of ["Puka Nacua", "Ja'Marr Chase"]) {
       assert.ok(
         rows.slice(0, 5).some((r) => r.player.name === name),
@@ -152,6 +152,18 @@ describe("Round 1 never recommends Rashee Rice", () => {
       `got ${top.map((p) => `${p.name} ${p.position}`).join(", ")}`,
     );
     assert.ok(!top.some((p) => p.name === "Rhamondre Stevenson"));
+  });
+
+  it("round 1 pick 3 is Gibbs then Puka, not Chase over Puka", () => {
+    const rows = rankBoard(PLAYERS_2026, [], 2, {
+      slot: 3,
+      teams: 12,
+      draftedIds: [],
+      humanSlots: [1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+    });
+    const names = rows.slice(0, 4).map((r) => r.player.name);
+    assert.equal(names[0], "Jahmyr Gibbs", names.join(", "));
+    assert.ok(names.indexOf("Puka Nacua") < names.indexOf("Ja'Marr Chase"), names.join(", "));
   });
 
   it("2 RB + 2 WR remaining hole is FLEX, not a kicker", () => {

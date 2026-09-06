@@ -812,7 +812,26 @@ export function rankBoard(available: Player[], team: Player[], untilMine = 0, ct
   };
   const pickNum = livePickCount(draftedIds, ctx.keeperSeats) + 1;
   const roundNow = Math.floor((pickNum - 1) / teams) + 1;
-  const until = roundNow === 1 && team.length === 0 ? 0 : untilMine;
+  if (roundNow === 1 && team.length === 0) {
+    return [...available]
+      .filter((p) => (p.position === "RB" || p.position === "WR") && (p.espnRank ?? p.rank) <= 24)
+      .sort((a, b) => b.proj * injuryFactor(b.name) - a.proj * injuryFactor(a.name))
+      .slice(0, 24)
+      .map((player) => {
+        const ev = evaluate(player, team, available, 0);
+        return {
+          player,
+          ...ev,
+          score: player.proj * injuryFactor(player.name),
+          cliff: 1,
+          safe: false,
+          safeUntil: 0,
+          path: "",
+          tier: posTier(player, available),
+        };
+      });
+  }
+  const until = untilMine;
   const onClock = until <= 1;
   const doomedCpu = new Set(
     simulateEspnWindow(
@@ -990,8 +1009,11 @@ export function pickReasons(
   const c = counts(team);
   const ev = evaluate(player, team, available, untilMine);
   const reasons: string[] = [];
-  if (team.length < 4 && (player.position === "WR" || player.position === "RB")) {
-    reasons.push("Starter script — RB/WR first");
+  if (team.length === 0 && player.position === "WR" && player.proj >= 340) {
+    reasons.unshift("Highest PPR volume on the board — take him");
+  }
+  if (team.length === 0 && player.position === "RB" && player.proj >= 360) {
+    reasons.unshift("Best player in the draft");
   }
   if (c.WR < ROSTER.WR && player.position === "WR") reasons.push("You still need a starting WR");
   if (c.RB < ROSTER.RB && player.position === "RB") reasons.push("You still need a starting RB");
