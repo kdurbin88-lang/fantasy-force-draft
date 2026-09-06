@@ -612,21 +612,31 @@ export function simulateEspnWindow(
   teams = TEAMS,
   keeperSeats: Record<string, number> = {},
 ): Player[] {
-  if (n <= 0) return [];
+  const steps = Math.min(Math.max(n, 0), 14);
+  if (steps <= 0) return [];
   const humans = new Set(humanSlots);
   const byTeam = reconstructRosters(draftedIds, teams, keeperSeats);
-  let board = [...available];
+  const gone = new Set<string>();
+  const espnOrder = available
+    .filter((p) => p.position !== "K" && p.position !== "DST")
+    .sort((a, b) => takeSlot(a) - takeSlot(b))
+    .slice(0, 160);
   const taken: Player[] = [];
   const live = livePickCount(draftedIds, keeperSeats);
-  for (let i = 1; i <= n; i++) {
+  for (let i = 1; i <= steps; i++) {
     const who = ownerSlot(live + i, teams);
     if (who === mySlot) continue;
-    const pick = humans.has(who)
-      ? humanTake(board, byTeam[who] ?? [])
-      : espnAutoTake(board, byTeam[who] ?? []);
+    const roster = byTeam[who] ?? [];
+    let pick: Player | null = null;
+    if (humans.has(who)) {
+      const board = espnOrder.filter((p) => !gone.has(p.id));
+      pick = humanTake(board, roster);
+    } else {
+      pick = espnOrder.find((p) => !gone.has(p.id) && fitsEspnStarter(roster, p)) ?? null;
+    }
     if (!pick) break;
     taken.push(pick);
-    board = board.filter((p) => p.id !== pick.id);
+    gone.add(pick.id);
     (byTeam[who] ??= []).push(pick);
   }
   return taken;
@@ -733,21 +743,14 @@ function bestFollowUp(board: Player[], team: Player[]): number {
 }
 
 export function pathPlan(available: Player[], team: Player[], untilMine: number) {
-  const wr = available
-    .filter((p) => p.position === "WR")
-    .sort((a, b) => trueValueOf(b, available) - trueValueOf(a, available))[0];
-  const rb = available
-    .filter((p) => p.position === "RB")
-    .sort((a, b) => trueValueOf(b, available) - trueValueOf(a, available))[0];
-  if (!wr || !rb || untilMine <= 1) {
+  if (untilMine <= 1) {
     return { winnerId: null as string | null, label: "", wr: 0, rb: 0 };
   }
-  const wrEv =
-    trueValueOf(wr, available) * urgency("WR", team) +
-    bestFollowUp(afterAutodraft(available, wr.id, untilMine), [...team, wr]);
-  const rbEv =
-    trueValueOf(rb, available) * urgency("RB", team) +
-    bestFollowUp(afterAutodraft(available, rb.id, untilMine), [...team, rb]);
+  const wr = available.find((p) => p.position === "WR");
+  const rb = available.find((p) => p.position === "RB");
+  if (!wr || !rb) return { winnerId: null as string | null, label: "", wr: 0, rb: 0 };
+  const wrEv = wr.proj * urgency("WR", team);
+  const rbEv = rb.proj * urgency("RB", team);
   const hero = rbEv > wrEv;
   return {
     winnerId: hero ? rb.id : wr.id,
@@ -835,7 +838,7 @@ export function rankBoard(available: Player[], team: Player[], untilMine = 0, ct
   const cpuW = 1 - Math.min(0.7, humans.length / Math.max(teams - 1, 1));
   const shortlist = [...available]
     .sort((a, b) => b.proj - a.proj)
-    .slice(0, 40);
+    .slice(0, 28);
   const focus = new Set(shortlist.map((p) => p.id));
   const rows = shortlist
     .map((player) => {
@@ -913,38 +916,22 @@ export function rankBoard(available: Player[], team: Player[], untilMine = 0, ct
     })
     .sort((a, b) => b.score - a.score);
 
-  const steps = Math.min(8, Math.max(1, onClock ? snipeWindow : untilMine));
-  const depth = book === "wheel" ? 2 : 3;
-  const top = rows.slice(0, depth);
-  for (const row of top) {
-    try {
-      const combo = comboValue(row.player, team, available, ctx, steps);
-      row.score += combo * 0.4;
-    } catch {
-      /* chaos pick / empty board — keep the base score */
+  if (onClock) {
+    const steps = Math.min(6, Math.max(1, snipeWindow));
+    const depth = 2;
+    const top = rows.slice(0, depth);
+    for (const row of top) {
+      try {
+        const combo = comboValue(row.player, team, available, ctx, steps);
+        row.score += combo * 0.4;
+      } catch {
+        /* keep base score */
+      }
     }
+    top.sort((a, b) => b.score - a.score);
+    return [...top, ...rows.slice(depth)];
   }
-  top.sort((a, b) => b.score - a.score);
-  const rest = available
-    .filter((p) => !focus.has(p.id))
-    .map((player) => ({
-      player,
-      vorp: 0,
-      trueValue: 0,
-      urgency: 1,
-      scarcity: 1,
-      injury: 1,
-      sos: 1,
-      score: -1e9,
-      delta: 0,
-      last: 1,
-      cliff: 1,
-      safe: false,
-      safeUntil: 99,
-      path: "",
-      tier: 4 as const,
-    }));
-  return [...top, ...rows.slice(depth), ...rest];
+  return rows;
 }
 
 function comboValue(
