@@ -1745,9 +1745,14 @@ export function DraftApp() {
                   ? ` · ${watchMode.toUpperCase()} · last tick ${beat ? `${Math.max(0, Math.round((now - beat) / 1000))}s ago` : "—"}`
                   : ""}
               </p>
-              {watchMode !== "off" && watchMode !== "sim" && draftedIds.length < 2 && beat > 0 && now - beat > 12000 && (
+              {watchMode !== "off" && watchMode !== "sim" && draftedIds.length === 0 && (
+                <div className="mt-3 rounded-2xl border border-white/15 bg-black/25 p-3 text-xs font-semibold leading-relaxed text-muted">
+                  Armed. Waiting for pick 1 — this is normal until the draft starts. Last-name box is the backup.
+                </div>
+              )}
+              {watchMode !== "off" && watchMode !== "sim" && draftedIds.length >= 1 && beat > 0 && now - beat > 20000 && (
                 <div className="mt-3 rounded-2xl border border-red-400/50 bg-red-500/20 p-3 text-xs font-semibold leading-relaxed text-fg">
-                  Reader missed. ESPN → Pick History → copy → paste below. Or type a last name.
+                  Reader went quiet. ESPN → Pick History → copy → paste. Or type a last name.
                 </div>
               )}
               <div className="mt-4 grid grid-cols-1 gap-2">
