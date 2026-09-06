@@ -810,13 +810,16 @@ export function rankBoard(available: Player[], team: Player[], untilMine = 0, ct
     TE: positionHeat(draftedIds, slot, "TE", snipeWindow),
     QB: positionHeat(draftedIds, slot, "QB", snipeWindow),
   };
-  const onClock = untilMine <= 1;
+  const pickNum = livePickCount(draftedIds, ctx.keeperSeats) + 1;
+  const roundNow = Math.floor((pickNum - 1) / teams) + 1;
+  const until = roundNow === 1 && team.length === 0 ? 0 : untilMine;
+  const onClock = until <= 1;
   const doomedCpu = new Set(
     simulateEspnWindow(
       available,
       draftedIds,
       slot,
-      Math.max(untilMine, onClock ? snipeWindow : 0),
+      Math.max(until, onClock ? snipeWindow : 0),
       [],
       teams,
       ctx.keeperSeats ?? {},
@@ -827,7 +830,7 @@ export function rankBoard(available: Player[], team: Player[], untilMine = 0, ct
       available,
       draftedIds,
       slot,
-      Math.max(untilMine, onClock ? snipeWindow : 0),
+      Math.max(until, onClock ? snipeWindow : 0),
       humans,
       teams,
       ctx.keeperSeats ?? {},
@@ -842,8 +845,8 @@ export function rankBoard(available: Player[], team: Player[], untilMine = 0, ct
   const focus = new Set(shortlist.map((p) => p.id));
   const rows = shortlist
     .map((player) => {
-      const ev = evaluate(player, team, available, untilMine);
-      const cliff = tierCliff(player, available, untilMine);
+      const ev = evaluate(player, team, available, until);
+      const cliff = tierCliff(player, available, until);
       const adpIdx = autodraftIndex(player, available);
       const integ = shieldIntegrity(player, available, ctx);
       const espnSafe = integ >= 70 && untilMine > 0;
@@ -870,7 +873,7 @@ export function rankBoard(available: Player[], team: Player[], untilMine = 0, ct
       score *= 1 + Math.max(0, dropOff(player, team, available)) / 90;
       const cpuSafe = !doomedCpu.has(player.id);
       const hybSafe = !doomedHyb.has(player.id);
-      if (untilMine > 1) {
+      if (until > 1) {
         score *= cpuW * (cpuSafe ? 1.1 : 0.22) + (1 - cpuW) * (hybSafe ? 1.05 : 0.18);
       }
       if (player.position === "WR" && wrHungry >= 3 && posTier(player, available) <= 2) {
