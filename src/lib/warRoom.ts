@@ -193,5 +193,5 @@ export function parseDump(
       /* fall through */
     }
   }
-  return { taken: extractFromText(raw, players).filter((p) => (p.espnRank ?? p.rank) > 15), queue: [] };
+  return { taken: extractFromText(raw, players), queue: [] };
 }

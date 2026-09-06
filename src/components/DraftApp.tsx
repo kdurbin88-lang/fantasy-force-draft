@@ -839,15 +839,14 @@ export function DraftApp() {
       if (!quiet) setWatchNote(`ESPN queue locked · ${parsed.queue.length} ranks`);
     }
     const catchup = extractEspnCatchup(text, PLAYERS_2026);
-    const fuzzy = extractFromText(text, PLAYERS_2026).filter(
-      (p) => (p.espnRank ?? p.rank) > 15,
-    );
-    const hits =
-      catchup.length >= 1
-        ? catchup
-        : parsed.taken.length || parsed.queue.length
-          ? parsed.taken
-          : fuzzy;
+    const fuzzy = extractFromText(text, PLAYERS_2026);
+    const slash = extractEspnPickLines(text, PLAYERS_2026);
+    const seenHit = new Set<string>();
+    const hits = [...catchup, ...slash, ...parsed.taken, ...fuzzy].filter((p) => {
+      if (seenHit.has(p.id)) return false;
+      seenHit.add(p.id);
+      return true;
+    });
     const drafted = useDraft.getState().draftedIds;
     const fresh = hits.filter((p) => !drafted.includes(p.id));
     if (live && catchup.length < 2 && fresh.length > 5) {
