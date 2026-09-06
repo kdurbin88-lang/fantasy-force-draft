@@ -32,6 +32,7 @@ interface DraftState {
   undo: () => string | null;
   mark: (player: Player, mine: boolean) => void;
   ingest: (players: Player[]) => number;
+  loadMine: (players: Player[]) => void;
   reset: () => void;
 }
 
@@ -158,6 +159,16 @@ export const useDraft = create<DraftState>()(
         });
         return fresh.length;
       },
+      loadMine: (players) => {
+        const ids = [...new Set(players.map((p) => p.id))];
+        const draftedIds = [...new Set([...get().draftedIds, ...ids])];
+        set({
+          myIds: ids,
+          draftedIds,
+          configured: true,
+          queueIds: reconcileQueue(get().queueIds, draftedIds),
+        });
+      },
       reset: () =>
         set({
           draftedIds: [],
@@ -170,20 +181,14 @@ export const useDraft = create<DraftState>()(
     }),
     {
       name: "fantasy-force-draft",
-      version: 6,
+      version: 7,
       skipHydration: false,
       migrate: (persisted) => {
         const p = persisted as DraftState;
         return {
           ...p,
-          slot: 3,
-          teams: 12,
-          draftedIds: [],
-          myIds: [],
-          queueIds: [],
-          lastIngest: "",
-          keeperSeats: {},
-          configured: false,
+          slot: p.slot || 3,
+          teams: p.teams || 12,
         };
       },
       partialize: (s) => {

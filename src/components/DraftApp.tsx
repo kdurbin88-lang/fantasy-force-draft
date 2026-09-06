@@ -44,6 +44,7 @@ import {
   type ImpactGrade,
 } from "@/lib/engine";
 import { liveDraftStarted, resolveTeam, useDraft, withLiveRanks } from "@/lib/store";
+import { myTeam2026 } from "@/lib/roster";
 import { canvasHash, grabFrame, ocrSource, sliceCanvas } from "@/lib/ocr";
 import {
   ESPN_LEAGUE_ID,
@@ -689,6 +690,7 @@ export function DraftApp() {
   const lastIngest = useDraft((s) => s.lastIngest);
   const mark = useDraft((s) => s.mark);
   const ingest = useDraft((s) => s.ingest);
+  const loadMine = useDraft((s) => s.loadMine);
   const reset = useDraft((s) => s.reset);
   const slot = useDraft((s) => s.slot);
   const setSlot = useDraft((s) => s.setSlot);
@@ -1295,6 +1297,16 @@ export function DraftApp() {
                     Recap
                   </button>
                 )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    loadMine(myTeam2026());
+                    setShowRecap(true);
+                  }}
+                  className="fd-btn inline-flex h-10 items-center gap-1.5 px-4 font-mono text-[11px] font-bold"
+                >
+                  Load my team
+                </button>
               </div>
             </div>
           </div>
