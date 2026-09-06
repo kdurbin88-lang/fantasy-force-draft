@@ -1230,16 +1230,47 @@ export function picksUntilTurn(draftedCount: number, slot: number, teams = TEAMS
 }
 
 export function quickMatch(query: string, available: Player[]): Player | null {
-  const q = query.trim().toLowerCase();
+  const q = query.trim().toLowerCase().replace(/['’.]/g, "");
   if (q.length < 2) return null;
-  const hits = available.filter(
-    (p) =>
-      p.name.toLowerCase().includes(q) ||
-      p.name.toLowerCase().split(" ").pop()?.startsWith(q),
-  );
+  const hits = available.filter((p) => nameHits(q, p));
   if (hits.length === 0) return null;
   hits.sort((a, b) => b.proj - a.proj);
   return hits[0];
+}
+
+function editDist(a: string, b: string) {
+  if (Math.abs(a.length - b.length) > 2) return 99;
+  const m = a.length;
+  const n = b.length;
+  const dp: number[][] = Array.from({ length: m + 1 }, (_, i) => {
+    const row = Array(n + 1).fill(0);
+    row[0] = i;
+    return row;
+  });
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      dp[i][j] =
+        a[i - 1] === b[j - 1]
+          ? dp[i - 1][j - 1]
+          : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+    }
+  }
+  return dp[m][n];
+}
+
+export function nameHits(query: string, player: Player) {
+  const q = query.trim().toLowerCase().replace(/['’.]/g, "");
+  const name = player.name.toLowerCase().replace(/['’.]/g, "");
+  if (!q) return true;
+  if (name.includes(q)) return true;
+  const last = name.split(/\s+/).slice(-1)[0] ?? "";
+  if (last.startsWith(q) || q.startsWith(last)) return true;
+  const qw = q.split(/\s+/).filter(Boolean);
+  const nw = name.split(/\s+/);
+  return qw.every((w) =>
+    nw.some((n) => n.startsWith(w) || n.includes(w) || (w.length >= 4 && editDist(w, n) <= 2)),
+  );
 }
 
 export const DEMO_ESPN = `Round 1

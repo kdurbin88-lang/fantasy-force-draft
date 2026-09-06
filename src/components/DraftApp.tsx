@@ -31,6 +31,7 @@ import {
   pickReasons,
   picksUntilTurn,
   quickMatch,
+  nameHits,
   eliteLeft,
   livePickCount,
   rankBoard,
@@ -771,15 +772,14 @@ export function DraftApp() {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase().replace(/['’.`]/g, "");
-    const needle = (s: string) => s.toLowerCase().replace(/['’.`]/g, "");
     const pool = q ? available : ranked.slice(0, 24);
-    return pool.filter((p) => {
-      if (posFilter !== "ALL" && p.position !== posFilter) return false;
-      if (!q) return true;
-      const name = needle(p.name);
-      const last = name.split(/\s+/).slice(-1)[0] ?? "";
-      return name.includes(q) || last.startsWith(q) || needle(p.team).includes(q) || p.position.toLowerCase() === q;
-    }).slice(0, q ? 36 : 24);
+    return pool
+      .filter((p) => {
+        if (posFilter !== "ALL" && p.position !== posFilter) return false;
+        if (!q) return true;
+        return nameHits(q, p);
+      })
+      .slice(0, q ? 36 : 24);
   }, [ranked, available, query, posFilter]);
 
   function take(player: Player, mine: boolean) {
