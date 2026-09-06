@@ -772,7 +772,7 @@ export function DraftApp() {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase().replace(/['’.`]/g, "");
-    const pool = q ? available : ranked.slice(0, 24);
+    const pool = q ? PLAYERS_2026 : ranked.slice(0, 24);
     return pool
       .filter((p) => {
         if (posFilter !== "ALL" && p.position !== posFilter) return false;
@@ -780,7 +780,7 @@ export function DraftApp() {
         return nameHits(q, p);
       })
       .slice(0, q ? 36 : 24);
-  }, [ranked, available, query, posFilter]);
+  }, [ranked, query, posFilter]);
 
   function take(player: Player, mine: boolean) {
     mark(player, mine);
@@ -810,7 +810,7 @@ export function DraftApp() {
       }, 0);
       return;
     }
-    const hit = quickMatch(takenQ, available);
+    const hit = quickMatch(takenQ, available) ?? quickMatch(takenQ, PLAYERS_2026);
     if (!hit) {
       setIngestMsg("No match — type more of the last name.");
       return;
@@ -1660,6 +1660,12 @@ export function DraftApp() {
                       </div>
                     </div>
                     <div className="flex shrink-0 gap-1">
+                      {draftedSet.has(p.id) ? (
+                        <span className="h-9 rounded-full border border-red-400/40 px-3 text-[11px] font-extrabold leading-9 text-red-300">
+                          {myIds.includes(p.id) ? "YOURS" : "GONE"}
+                        </span>
+                      ) : (
+                        <>
                       <button
                         type="button"
                         onClick={(e) => {
@@ -1680,6 +1686,8 @@ export function DraftApp() {
                       >
                         TAKEN
                       </button>
+                        </>
+                      )}
                     </div>
                   </div>
                 ))}
