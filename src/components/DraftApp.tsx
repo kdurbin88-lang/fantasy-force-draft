@@ -1320,9 +1320,9 @@ export function DraftApp() {
           </div>
         </header>
 
-        <div className="mb-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto_auto]">
+        <div className="sticky top-0 z-50 mb-4 bg-bg/90 py-2 backdrop-blur-md">
           <form
-            className="fd-glass flex flex-col gap-2 rounded-[28px] p-3 lg:flex-row lg:items-center"
+            className="fd-glass flex flex-col gap-2 rounded-[28px] p-3 sm:flex-row sm:items-center"
             onSubmit={(e) => {
               e.preventDefault();
               takeTyped(false);
@@ -1331,58 +1331,27 @@ export function DraftApp() {
             <input
               value={takenQ}
               onChange={(e) => setTakenQ(e.target.value)}
-              placeholder="Last name just went — Enter"
-              className="h-12 flex-1 rounded-xl bg-transparent px-4 text-sm text-fg placeholder:text-subtle outline-none"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  takeTyped(e.shiftKey);
+                }
+              }}
+              placeholder="Type last name — Hampton, Henry, Rice"
+              autoComplete="off"
+              className="h-14 flex-1 rounded-xl bg-transparent px-4 text-lg text-fg placeholder:text-subtle outline-none"
             />
-            <button type="submit" className="fd-btn h-12 w-full text-sm font-bold lg:w-auto lg:px-6">
-              <span className="inline-flex items-center gap-2">
-                <X className="size-4" />
-                MARK TAKEN
-              </span>
+            <button type="submit" className="fd-btn h-14 min-w-[160px] text-base font-extrabold">
+              TAKEN
             </button>
             <button
               type="button"
               onClick={() => takeTyped(true)}
-              className="go-btn h-12 w-full text-sm font-bold lg:w-auto lg:px-6"
+              className="go-btn h-14 min-w-[160px] text-base font-extrabold"
             >
-              <span className="inline-flex items-center gap-2">
-                <Check className="size-4" />
-                That was me
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={runUndo}
-              className="go-btn h-12 w-full text-sm font-bold lg:w-auto lg:px-6"
-            >
-              <span className="inline-flex items-center gap-2">
-                <Undo2 className="size-4" />
-                Undo
-              </span>
+              I GOT HIM
             </button>
           </form>
-          <label className="fd-glass flex h-[60px] items-center gap-3 rounded-2xl px-4 text-sm font-bold">
-            <Target className="size-4 text-accent-bright" />
-            SLOT
-            <select
-              value={slot}
-              onChange={(e) => setSlot(Number(e.target.value))}
-              className="bg-transparent font-display text-2xl font-extrabold outline-none"
-            >
-              {Array.from({ length: teams }, (_, i) => i + 1).map((n) => (
-                <option key={n} value={n} className="bg-surface">
-                  {n}
-                </option>
-              ))}
-            </select>
-          </label>
-          <button
-            type="button"
-            onClick={unlockRoom}
-            className="fd-glass h-[60px] rounded-2xl px-4 text-xs font-bold tracking-widest"
-          >
-            ROOM
-          </button>
         </div>
         <div className="mb-4 min-w-0 rounded-2xl fd-glass px-3 py-3">
           <div className="mb-2 font-mono text-[10px] font-bold tracking-widest text-subtle">
@@ -1619,6 +1588,12 @@ export function DraftApp() {
                     spellCheck={false}
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key !== "Enter") return;
+                      e.preventDefault();
+                      const hit = quickMatch(query, available);
+                      if (hit) take(hit, e.shiftKey);
+                    }}
                     placeholder="Find a player — name or last name"
                     className="fd-glass relative z-20 h-12 w-full rounded-2xl pl-11 pr-4 text-sm text-fg placeholder:text-subtle outline-none"
                   />
