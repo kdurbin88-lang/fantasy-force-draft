@@ -18,10 +18,10 @@ export function SetupBoot() {
   return (
     <main className="relative z-[60] flex min-h-dvh items-center justify-center px-4 py-16 text-fg">
       <div className="fd-glass w-full min-w-0 max-w-lg space-y-5 p-6 sm:p-8">
-        <p className="font-mono text-[11px] font-bold tracking-[0.35em] text-accent-bright">BOOT LOAD</p>
-        <h1 className="title-glow font-display text-4xl font-extrabold tracking-tight">What’s your pick?</h1>
+        <p className="font-mono text-[11px] font-bold tracking-[0.35em] text-accent-bright">LIVE DRAFT</p>
+        <h1 className="title-glow font-display text-4xl font-extrabold tracking-tight">You’re pick 3</h1>
         <p className="text-sm text-muted">
-          12-team league. Tap your draft slot. Everyone else starts live — if a seat auto-picks in a second, tap them later on the board.
+          12-team · 2 WR · 2 RB · FLEX. Confirm seat 3 and lock. This board saves from here — no more practice wipes.
         </p>
 
         <div className="fd-glass min-w-0 p-4">

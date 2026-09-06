@@ -1383,15 +1383,6 @@ export function DraftApp() {
               ))}
             </select>
           </label>
-          {!liveDraftStarted() && (
-            <button
-              type="button"
-              onClick={reset}
-              className="fd-ghost h-[60px] rounded-2xl px-4 text-xs font-bold tracking-widest"
-            >
-              NEW PRACTICE
-            </button>
-          )}
           <button
             type="button"
             onClick={unlockRoom}

@@ -2,8 +2,8 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { PLAYERS_2026, type Player } from "./players";
 
-/** Live draft: Sat Sep 5, 2026 8:00 PM CDT. Practice before this does not persist the board. */
-export const LIVE_DRAFT_AT = Date.parse("2026-09-05T20:00:00-05:00");
+/** Live draft locked. No more practice wipes. */
+export const LIVE_DRAFT_AT = Date.parse("2026-09-05T19:00:00-05:00");
 export function liveDraftStarted(now = Date.now()) {
   return now >= LIVE_DRAFT_AT;
 }
@@ -41,7 +41,7 @@ export const useDraft = create<DraftState>()(
       draftedIds: [],
       myIds: [],
       lastIngest: "",
-      slot: 0,
+      slot: 3,
       teams: 12,
       configured: false,
       leagueId: "296381258",
@@ -170,25 +170,21 @@ export const useDraft = create<DraftState>()(
     }),
     {
       name: "fantasy-force-draft",
-      version: 5,
+      version: 6,
       skipHydration: false,
       migrate: (persisted) => {
         const p = persisted as DraftState;
-        if (!liveDraftStarted()) {
-          return {
-            ...p,
-            draftedIds: [],
-            myIds: [],
-            queueIds: [],
-            lastIngest: "",
-            keeperSeats: {},
-            configured: false,
-          };
-        }
-        return p;
-      },
-      onRehydrateStorage: () => (state) => {
-        if (state && !liveDraftStarted()) state.reset();
+        return {
+          ...p,
+          slot: 3,
+          teams: 12,
+          draftedIds: [],
+          myIds: [],
+          queueIds: [],
+          lastIngest: "",
+          keeperSeats: {},
+          configured: false,
+        };
       },
       partialize: (s) => {
         const room = {
